@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8" />
+<meta charset="UTF-8">
 <title>Bản đồ hiệu suất FTTH GPON</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -23,32 +23,13 @@ html, body { height:100%; margin:0; font-family:Arial }
   width:100%; margin-bottom:6px; padding:6px
 }
 
-.legend div{ display:flex; align-items:center; font-size:12px }
+.legend div{
+  display:flex; align-items:center; font-size:12px
+}
+
 .legend span{
   width:14px; height:14px; margin-right:6px;
   border:1px solid #333; display:inline-block
-}
-
-/* Pulse chậm */
-.pulse-slow {
-  animation: pulseSlow 1.5s infinite;
-}
-
-/* Pulse nhanh – điểm tốt nhất */
-.pulse-fast {
-  animation: pulseFast 0.7s infinite;
-}
-
-@keyframes pulseSlow {
-  0% { transform:scale(1); }
-  50% { transform:scale(1.15); }
-  100% { transform:scale(1); }
-}
-
-@keyframes pulseFast {
-  0% { transform:scale(1); }
-  50% { transform:scale(1.3); }
-  100% { transform:scale(1); }
 }
 </style>
 </head>
@@ -56,7 +37,7 @@ html, body { height:100%; margin:0; font-family:Arial }
 <body>
 
 <div class="control-panel">
-  <input id="searchInput" placeholder="Địa chỉ hoặc lat,lng" />
+  <input id="searchInput" placeholder="Địa chỉ hoặc lat,lng">
   <button onclick="searchLocation()">Tìm khách hàng</button>
 
   <select id="filterSelect" onchange="applyFilter()">
@@ -67,7 +48,9 @@ html, body { height:100%; margin:0; font-family:Arial }
     <option value="gte80">&ge; 80%</option>
   </select>
 
-  <button onclick="exportUpgradeList()">Danh sách tập điểm cần nâng cấp</button>
+  <button onclick="exportUpgradeList()">
+    Danh sách tập điểm cần nâng cấp
+  </button>
 
   <div class="legend">
     <div><span style="background:#1e90ff"></span>&lt;20%</div>
@@ -82,41 +65,52 @@ html, body { height:100%; margin:0; font-family:Arial }
 
 <script>
 /* ================= CONFIG ================= */
-const SHEET_ID="1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq";
-const SHEET_NAME="Danh sách tập điểm S2";
+const SHEET_ID = "1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq";
+const SHEET_NAME = "Danh sách tập điểm S2";
 
-let map, allPoints=[], circles=[], suggestLayers=[], lineLayers=[], customerMarker;
+/* ================= GLOBAL ================= */
+let map;
+let allPoints = [];
+let baseCircles = [];
+let suggestCircles = [];
+let suggestLines = [];
+let blinkTimers = [];
+let customerMarker;
 
 /* ================= INIT ================= */
-google.charts.load("current",{packages:["corechart"]});
+google.charts.load("current", { packages:["corechart"] });
 google.charts.setOnLoadCallback(init);
 
 function init(){
-  map=L.map("map").setView([16,108],6);
+  map = L.map("map").setView([16,108],6);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
   loadData();
 }
 
 /* ================= DATA ================= */
 function loadData(){
-  const q=new google.visualization.Query(
+  const q = new google.visualization.Query(
     `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`
   );
+
   q.send(res=>{
-    const t=res.getDataTable();
+    const t = res.getDataTable();
     for(let i=0;i<t.getNumberOfRows();i++){
-      const lat=t.getValue(i,9), lng=t.getValue(i,10);
+      const lat = t.getValue(i,9);
+      const lng = t.getValue(i,10);
       if(!validCoord(lat,lng)) continue;
+
       allPoints.push({
-        name:t.getValue(i,2),
-        max:t.getValue(i,3),
-        used:t.getValue(i,4),
-        free:t.getValue(i,5),
-        util:t.getValue(i,7)*100,
+        name: t.getValue(i,2),
+        max: t.getValue(i,3),
+        used: t.getValue(i,4),
+        free: t.getValue(i,5),
+        util: t.getValue(i,7) * 100,
         lat:+lat, lng:+lng
       });
     }
-    draw(allPoints); fit();
+    drawBase(allPoints);
+    fitMap();
   });
 }
 
@@ -125,21 +119,26 @@ function validCoord(lat,lng){
   return !(isNaN(lat)||isNaN(lng)||lat<-90||lat>90||lng<-180||lng>180);
 }
 
-/* ================= DRAW ================= */
-function color(u){
-  if(u<20)return"#1e90ff";
-  if(u<50)return"#2ecc71";
-  if(u<80)return"#f1c40f";
-  if(u<100)return"#e74c3c";
-  return"#000";
+/* ================= BASE MAP ================= */
+function utilColor(u){
+  if(u<20) return "#1e90ff";
+  if(u<50) return "#2ecc71";
+  if(u<80) return "#f1c40f";
+  if(u<100) return "#e74c3c";
+  return "#000";
 }
 
-function draw(arr){
-  circles.forEach(c=>map.removeLayer(c));
-  circles=[];
+function drawBase(arr){
+  baseCircles.forEach(c=>map.removeLayer(c));
+  baseCircles=[];
+
   arr.forEach(p=>{
-    const c=L.circle([p.lat,p.lng],{
-      radius:300,color:color(p.util),fillColor:color(p.util),fillOpacity:.6
+    const c = L.circle([p.lat,p.lng],{
+      radius:300,
+      color: utilColor(p.util),
+      fillColor: utilColor(p.util),
+      fillOpacity:0.6,
+      weight:2
     }).addTo(map)
      .bindPopup(`
       <b>${p.name}</b><br>
@@ -148,103 +147,128 @@ function draw(arr){
       Còn lại: ${p.free}<br>
       Hiệu suất: ${p.util.toFixed(1)}%
      `);
-    circles.push(c);
+    baseCircles.push(c);
   });
 }
 
-function fit(){
-  if(!circles.length) return;
-  map.fitBounds(L.featureGroup(circles).getBounds().pad(.2));
+function fitMap(){
+  if(!baseCircles.length) return;
+  map.fitBounds(L.featureGroup(baseCircles).getBounds().pad(0.2));
 }
 
 /* ================= SEARCH ================= */
 async function searchLocation(){
   clearSuggest();
-  const v=document.getElementById("searchInput").value.trim();
-  if(!v)return;
+  const v = document.getElementById("searchInput").value.trim();
+  if(!v) return;
 
   let lat,lng;
   if(v.includes(",")){
-    [lat,lng]=v.split(",").map(Number);
+    [lat,lng] = v.split(",").map(Number);
   }else{
-    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(v)}`);
-    const d=await r.json();
-    if(!d.length)return;
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(v)}`
+    );
+    const d = await r.json();
+    if(!d.length) return;
     lat=+d[0].lat; lng=+d[0].lon;
   }
 
   if(customerMarker) map.removeLayer(customerMarker);
-  customerMarker=L.marker([lat,lng]).addTo(map).bindPopup("Vị trí khách hàng").openPopup();
+  customerMarker = L.marker([lat,lng]).addTo(map)
+    .bindPopup("Vị trí khách hàng").openPopup();
+
   map.setView([lat,lng],16);
-  suggest(lat,lng);
+  suggestPoints(lat,lng);
 }
 
 /* ================= SUGGEST ================= */
-function hav(a,b,c,d){
-  const R=6371000,rad=x=>x*Math.PI/180;
+function haversine(a,b,c,d){
+  const R=6371000, rad=x=>x*Math.PI/180;
   const dLat=rad(c-a), dLng=rad(d-b);
-  const s=Math.sin(dLat/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dLng/2)**2;
+  const s=Math.sin(dLat/2)**2+
+          Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(dLng/2)**2;
   return R*2*Math.atan2(Math.sqrt(s),Math.sqrt(1-s));
 }
 
-function suggest(lat,lng){
+function suggestPoints(lat,lng){
   clearSuggest();
 
-  const list=allPoints.filter(p=>p.free>0)
-    .map(p=>({...p,dist:hav(lat,lng,p.lat,p.lng)}))
-    .sort((a,b)=>a.dist-b.dist||a.util-b.util)
+  const list = allPoints
+    .filter(p=>p.free>0)
+    .map(p=>({...p, dist:haversine(lat,lng,p.lat,p.lng)}))
+    .sort((a,b)=>a.dist-b.dist || a.util-b.util)
     .slice(0,3);
 
-  list.forEach((p,i)=>{
-    const best=i===0;
-    const c=L.circle([p.lat,p.lng],{
-      radius:best?550:450,
-      color:best?"#000":"#555",
-      weight:best?5:3,
-      fillOpacity:.35,
-      className:best?"pulse-fast":"pulse-slow"
+  list.forEach((p,idx)=>{
+    const isBest = idx===0;
+
+    const c = L.circle([p.lat,p.lng],{
+      radius:450,
+      color: isBest ? "#000" : "#555",
+      weight: isBest ? 6 : 4,
+      fillColor: utilColor(p.util),
+      fillOpacity:0.4
     }).addTo(map)
      .bindPopup(`
       <b>${p.name}</b><br>
       Khoảng cách: ${p.dist.toFixed(0)} m<br>
       Hiệu suất: ${p.util.toFixed(1)}%
-      ${best?"<br><b>⭐ Tốt nhất</b>":""}
+      ${isBest?"<br><b>⭐ Tốt nhất</b>":""}
      `);
 
-    const line=L.polyline([[lat,lng],[p.lat,p.lng]],{
-      dashArray:"6,6", color:"#000"
+    const line = L.polyline([[lat,lng],[p.lat,p.lng]],{
+      dashArray:"6,6",
+      color:"#000"
     }).addTo(map);
 
-    suggestLayers.push(c);
-    lineLayers.push(line);
+    startBlink(c, isBest ? 400 : 800);
+
+    suggestCircles.push(c);
+    suggestLines.push(line);
   });
 }
 
+/* ================= BLINK VIỀN ================= */
+function startBlink(circle, interval){
+  let on = true;
+  const timer = setInterval(()=>{
+    circle.setStyle({
+      opacity: on ? 0 : 1,
+      weight: on ? 0 : circle.options.weight
+    });
+    on = !on;
+  }, interval);
+  blinkTimers.push(timer);
+}
+
+/* ================= CLEAR ================= */
 function clearSuggest(){
-  suggestLayers.forEach(l=>map.removeLayer(l));
-  lineLayers.forEach(l=>map.removeLayer(l));
-  suggestLayers=[]; lineLayers=[];
+  suggestCircles.forEach(c=>map.removeLayer(c));
+  suggestLines.forEach(l=>map.removeLayer(l));
+  blinkTimers.forEach(t=>clearInterval(t));
+  suggestCircles=[]; suggestLines=[]; blinkTimers=[];
 }
 
 /* ================= FILTER ================= */
 function applyFilter(){
   const v=document.getElementById("filterSelect").value;
   let f=allPoints;
-  if(v==="lt20")f=allPoints.filter(p=>p.util<20);
-  if(v==="20to50")f=allPoints.filter(p=>p.util>=20&&p.util<50);
-  if(v==="50to80")f=allPoints.filter(p=>p.util>=50&&p.util<80);
-  if(v==="gte80")f=allPoints.filter(p=>p.util>=80);
-  draw(f);
+  if(v==="lt20") f=allPoints.filter(p=>p.util<20);
+  if(v==="20to50") f=allPoints.filter(p=>p.util>=20&&p.util<50);
+  if(v==="50to80") f=allPoints.filter(p=>p.util>=50&&p.util<80);
+  if(v==="gte80") f=allPoints.filter(p=>p.util>=80);
+  drawBase(f);
 }
 
 /* ================= EXPORT ================= */
 function exportUpgradeList(){
-  const data=allPoints.filter(p=>p.util>=80).map(p=>({
-    "Tên tập điểm":p.name,
-    Latitude:p.lat,
-    Longitude:p.lng,
-    "Hiệu suất (%)":p.util.toFixed(1),
-    "Mức ưu tiên":p.util>=100?"Ưu tiên 1":"Ưu tiên 2"
+  const data = allPoints.filter(p=>p.util>=80).map(p=>({
+    "Tên tập điểm": p.name,
+    Latitude: p.lat,
+    Longitude: p.lng,
+    "Hiệu suất (%)": p.util.toFixed(1),
+    "Mức ưu tiên": p.util>=100 ? "Ưu tiên 1" : "Ưu tiên 2"
   }));
   const ws=XLSX.utils.json_to_sheet(data);
   const wb=XLSX.utils.book_new();
