@@ -1,221 +1,171 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8" />
-<title>Bản đồ kiểm soát hiệu suất FTTH</title>
-
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+<meta charset="UTF-8">
+<title>Bản đồ hiệu suất FTTH GPON</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-body { margin: 0; font-family: Arial, sans-serif; }
-#map { height: 100vh; width: 75%; float: left; }
-#panel {
-  width: 25%;
-  height: 100vh;
-  overflow-y: auto;
-  padding: 10px;
-  box-sizing: border-box;
-  border-left: 1px solid #ccc;
+body { margin:0; font-family: Arial; }
+#map { height: 100vh; }
+.control {
+  position:absolute; top:10px; left:10px;
+  background:#fff; padding:10px;
+  z-index:1000; border-radius:6px;
+  box-shadow:0 0 5px rgba(0,0,0,.3);
 }
-h3 { margin-top: 10px; }
-input, select, button {
-  width: 100%;
-  margin-bottom: 6px;
-  padding: 6px;
+.blink {
+  animation: blink 1s infinite;
 }
-.legend div { margin-bottom: 4px; }
-.color-box {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  margin-right: 6px;
-}
-.highlight {
-  animation: pulse 1s infinite;
-}
-@keyframes pulse {
-  0% { opacity: 1; }
-  50% { opacity: 0.4; }
-  100% { opacity: 1; }
+@keyframes blink {
+  0% {opacity:1}
+  50% {opacity:0.3}
+  100% {opacity:1}
 }
 </style>
 </head>
 
 <body>
+<div class="control">
+  <b>Lọc hiệu suất</b><br>
+  <select id="filter">
+    <option value="all">Tất cả</option>
+    <option value="1">&lt; 20%</option>
+    <option value="2">20–50%</option>
+    <option value="3">50–80%</option>
+    <option value="4">80–100%</option>
+    <option value="5">&ge;100%</option>
+  </select><br><br>
+
+  <input id="search" placeholder="Nhập vị trí tìm kiếm" style="width:180px">
+  <button onclick="searchLocation()">Tìm</button><br><br>
+
+  <button onclick="exportExcel()">📤 Xuất tập điểm cần nâng cấp</button>
+</div>
 
 <div id="map"></div>
 
-<div id="panel">
-  <h3>Tìm kiếm</h3>
-  <input id="searchInput" placeholder="Nhập địa chỉ hoặc Lat,Long" />
-  <button onclick="searchLocation()">Tìm kiếm</button>
-
-  <h3>Lọc theo hiệu suất</h3>
-  <select id="filterSelect" onchange="applyFilter()">
-    <option value="all">Hiển thị tất cả</option>
-    <option value="blue">&lt; 20%</option>
-    <option value="green">20% - &lt; 50%</option>
-    <option value="yellow">50% - &lt; 80%</option>
-    <option value="red">80% - &lt; 100%</option>
-    <option value="black">&ge; 100%</option>
-  </select>
-
-  <h3>Chú giải</h3>
-  <div class="legend">
-    <div><span class="color-box" style="background:blue"></span>&lt; 20%</div>
-    <div><span class="color-box" style="background:green"></span>20% – &lt; 50%</div>
-    <div><span class="color-box" style="background:yellow"></span>50% – &lt; 80%</div>
-    <div><span class="color-box" style="background:red"></span>80% – &lt; 100%</div>
-    <div><span class="color-box" style="background:black"></span>&ge; 100%</div>
-  </div>
-
-  <h3>⚠️ Ưu tiên nâng cấp</h3>
-  <b>Ưu tiên 1 (≥100%)</b>
-  <ul id="priority1"></ul>
-  <b>Ưu tiên 2 (80–&lt;100%)</b>
-  <ul id="priority2"></ul>
-
-  <h3>⭐ Gợi ý bán hàng</h3>
-  <div id="suggestion"></div>
-</div>
-
 <script>
-const SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq/gviz/tq?tqx=out:csv&sheet=Danh%20sách%20tập%20điểm%20S2";
+const sheetURL =
+"https://docs.google.com/spreadsheets/d/1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq/gviz/tq?tqx=out:csv&sheet=Danh sách tập điểm S2";
 
-const map = L.map("map").setView([16, 108], 6);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19
-}).addTo(map);
+const map = L.map('map').setView([10.8,106.7], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
 let circles = [];
-let allData = [];
+let dataPoints = [];
 
-function colorByEfficiency(eff) {
-  if (eff < 0.2) return "blue";
-  if (eff < 0.5) return "green";
-  if (eff < 0.8) return "yellow";
-  if (eff < 1) return "red";
-  return "black";
+function getColor(p){
+  if(p>=1) return "black";
+  if(p>=0.8) return "red";
+  if(p>=0.5) return "yellow";
+  if(p>=0.2) return "green";
+  return "blue";
 }
 
-fetch(SHEET_URL)
-  .then(r => r.text())
-  .then(csv => {
-    const rows = csv.split("\n").slice(1);
-    const bounds = [];
+Papa.parse(sheetURL,{
+  download:true,
+  header:true,
+  complete:(res)=>{
+    res.data.forEach(r=>{
+      let lat=parseFloat(r["Latitude"]);
+      let lng=parseFloat(r["Longitude"]);
+      if(isNaN(lat)||isNaN(lng)) return;
 
-    rows.forEach(row => {
-      const c = row.split(",");
-      const name = c[2];
-      const address = c[8];
-      const maxPort = Number(c[3]);
-      const used = Number(c[4]);
-      const remain = Number(c[5]);
-      const eff = Number(c[7]);
-      const lat = Number(c[9]);
-      const lng = Number(c[10]);
-
-      if (!lat || !lng) return;
-
-      const color = colorByEfficiency(eff);
-
-      const circle = L.circle([lat, lng], {
-        radius: 300,
-        color,
-        fillColor: color,
-        fillOpacity: 0.4
+      let eff=parseFloat(r["Hiệu suất sử dụng"]);
+      let circle=L.circle([lat,lng],{
+        radius:300,
+        color:getColor(eff),
+        fillColor:getColor(eff),
+        fillOpacity:0.4
       }).bindPopup(`
-        <b>${name}</b><br/>
-        ${address}<br/>
-        Tổng port: ${maxPort}<br/>
-        Đã dùng: ${used}<br/>
-        Còn lại: ${remain}<br/>
-        Hiệu suất: ${(eff * 100).toFixed(1)}%
+        <b>${r["Tên tập điểm"]}</b><br>
+        ${r["Địa chỉ"]}<br>
+        Tổng port: ${r["Dung lượng tối đa (port)"]}<br>
+        Đã dùng: ${r["Số port đã dùng"]}<br>
+        Còn lại: ${r["Số port còn lại"]}<br>
+        Hiệu suất: ${(eff*100).toFixed(1)}%
       `).addTo(map);
 
-      circles.push({ circle, eff, lat, lng, remain, name });
-      allData.push({ eff, name });
-
-      bounds.push([lat, lng]);
+      circle.meta={eff,lat,lng,...r};
+      circles.push(circle);
+      dataPoints.push(circle.meta);
     });
+    let group=L.featureGroup(circles);
+    map.fitBounds(group.getBounds());
+  }
+});
 
-    if (bounds.length) map.fitBounds(bounds);
-
-    updatePriorityLists();
-  });
-
-function applyFilter() {
-  const f = document.getElementById("filterSelect").value;
-  circles.forEach(o => {
-    const c = colorByEfficiency(o.eff);
-    if (f === "all" || f === c) map.addLayer(o.circle);
-    else map.removeLayer(o.circle);
-  });
-}
-
-function updatePriorityLists() {
-  const p1 = document.getElementById("priority1");
-  const p2 = document.getElementById("priority2");
-  p1.innerHTML = "";
-  p2.innerHTML = "";
-
-  allData.forEach(d => {
-    if (d.eff >= 1) p1.innerHTML += `<li>${d.name}</li>`;
-    else if (d.eff >= 0.8) p2.innerHTML += `<li>${d.name}</li>`;
+document.getElementById("filter").onchange=function(){
+  circles.forEach(c=>{
+    let e=c.meta.eff;
+    let v=this.value;
+    let show =
+      v=="all" ||
+      (v==1 && e<0.2) ||
+      (v==2 && e>=0.2&&e<0.5) ||
+      (v==3 && e>=0.5&&e<0.8) ||
+      (v==4 && e>=0.8&&e<1) ||
+      (v==5 && e>=1);
+    show ? c.addTo(map) : map.removeLayer(c);
   });
 }
 
-let searchMarker;
+function distance(a,b){
+  return map.distance(a,b);
+}
 
-function searchLocation() {
-  const v = document.getElementById("searchInput").value.trim();
-  let lat, lng;
-
-  if (v.includes(",")) {
-    [lat, lng] = v.split(",").map(Number);
-    goToLocation(lat, lng);
-  } else {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${v}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.length) goToLocation(+d[0].lat, +d[0].lon);
-      });
+function searchLocation(){
+  let q=document.getElementById("search").value;
+  if(q.includes(",")){
+    let [lat,lng]=q.split(",").map(Number);
+    handleSearch(lat,lng);
+  }else{
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
+    .then(r=>r.json())
+    .then(d=>{
+      if(d[0]) handleSearch(+d[0].lat,+d[0].lon);
+    });
   }
 }
 
-function goToLocation(lat, lng) {
-  if (searchMarker) map.removeLayer(searchMarker);
-  searchMarker = L.marker([lat, lng]).addTo(map);
-  map.setView([lat, lng], 16);
+function handleSearch(lat,lng){
+  map.setView([lat,lng],16);
+  L.marker([lat,lng]).addTo(map).bindPopup("Vị trí khách hàng").openPopup();
 
-  circles.forEach(o => o.circle.setStyle({ weight: 1 }));
+  let candidates=dataPoints
+    .filter(d=>d["Số port còn lại"]>0)
+    .map(d=>({...d,dist:distance([lat,lng],[d.lat,d.lng])}))
+    .sort((a,b)=>a.dist-b.dist)
+    .slice(0,3);
 
-  const available = circles
-    .filter(o => o.remain > 0)
-    .map(o => ({
-      ...o,
-      dist: map.distance([lat, lng], [o.lat, o.lng])
-    }))
-    .sort((a, b) => a.dist - b.dist)
-    .slice(0, 3);
-
-  available.forEach(o => {
-    o.circle.setStyle({ weight: 4 });
-    o.circle.getElement().classList.add("highlight");
+  circles.forEach(c=>{
+    if(candidates.find(x=>x.lat==c.meta.lat)){
+      c.setStyle({weight:4});
+      c._path.classList.add("blink");
+      c.bindPopup(c.getPopup().getContent()+`<br>Khoảng cách: ${Math.round(distance([lat,lng],[c.meta.lat,c.meta.lng]))} m`);
+    }
   });
+}
 
-  if (available.length) {
-    const best = available.sort((a, b) =>
-      a.dist !== b.dist ? a.dist - b.dist : a.eff - b.eff
-    )[0];
-
-    document.getElementById("suggestion").innerHTML =
-      `<b>${best.name}</b><br/>Khoảng cách: ${best.dist.toFixed(0)} m`;
-  }
+function exportExcel(){
+  let rows=dataPoints
+    .filter(d=>d["Hiệu suất sử dụng"]>=0.8)
+    .map(d=>({
+      "Tên tập điểm":d["Tên tập điểm"],
+      Latitude:d.lat,
+      Longitude:d.lng,
+      "Địa chỉ":d["Địa chỉ"],
+      "Hiệu suất":d["Hiệu suất sử dụng"]*100+"%",
+      "Ưu tiên": d["Hiệu suất sử dụng"]>=1?"Ưu tiên 1":"Ưu tiên 2"
+    }));
+  let ws=XLSX.utils.json_to_sheet(rows);
+  let wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Nâng cấp");
+  XLSX.writeFile(wb,"tap_diem_can_nang_cap.xlsx");
 }
 </script>
-
 </body>
 </html>
