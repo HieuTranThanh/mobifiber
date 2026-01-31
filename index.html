@@ -75,30 +75,6 @@
       box-shadow: 0 0 6px rgba(0,0,0,0.3);
       font-size: 13px;
     }
-
-    .suggest-box {
-      position: absolute;
-      top: 34px;
-      left: 0;
-      right: 42px;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      max-height: 180px;
-      overflow-y: auto;
-      z-index: 2000;
-      display: none;
-      font-size: 12px;
-    }
-    
-    .suggest-item {
-      padding: 6px 8px;
-      cursor: pointer;
-    }
-    
-    .suggest-item:hover {
-      background: #f0f0f0;
-    }
     
   </style>
 </head>
@@ -107,13 +83,10 @@
 <div class="control-box">
   <div class="panel-title">Tìm tập điểm gần khách hàng</div>
 
-<div class="search-row" style="position:relative">
-  <input id="searchInput" placeholder="Nhập tọa độ hoặc địa chỉ">
-  <button onclick="searchLocation()">Tìm</button>
-
-  <!-- GỢI Ý -->
-  <div id="suggestBox" class="suggest-box"></div>
-</div>
+  <div class="search-row">
+    <input id="searchInput" placeholder="Nhập tọa độ hoặc địa chỉ">
+    <button onclick="searchLocation()">Tìm</button>
+  </div>
 
   <div>
     <div><b>Hiển thị theo hiệu suất sử dụng</b></div>
@@ -174,7 +147,8 @@ function validateLatLng(lat, lng) {
   lng = Number(lng);
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-  
+
+  // ✅ BỔ SUNG DÒNG NÀY – CHỐT HẠ
   if (lat === 0 && lng === 0) return false;
 
   return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
@@ -288,55 +262,7 @@ function searchLocation() {
     return;
   }
 
-suggestTimer = setTimeout(() => {
-  const q = input.value.trim();
-  if (q.length < 3) return;
-
-  const bounds = map.getBounds();
-
-  const viewbox = [
-    bounds.getWest(),
-    bounds.getSouth(),
-    bounds.getEast(),
-    bounds.getNorth()
-  ].join(",");
-
-  const url =
-    `https://nominatim.openstreetmap.org/search` +
-    `?format=json` +
-    `&limit=5` +
-    `&bounded=1` +
-    `&viewbox=${viewbox}` +
-    `&q=${encodeURIComponent(q)}`;
-
-  fetch(url)
-    .then(r => r.json())
-    .then(data => {
-      suggestBox.innerHTML = "";
-
-      if (!data.length) {
-        suggestBox.style.display = "none";
-        return;
-      }
-
-      data.forEach(item => {
-        const div = document.createElement("div");
-        div.className = "suggest-item";
-        div.textContent = item.display_name;
-
-        div.onclick = () => {
-          input.value = item.display_name;
-          suggestBox.style.display = "none";
-          handleCustomer(+item.lat, +item.lon);
-        };
-
-        suggestBox.appendChild(div);
-      });
-
-      suggestBox.style.display = "block";
-    });
-}, 300);
-  
+  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}`)
     .then(r => r.json())
     .then(r => r[0] && handleCustomer(+r[0].lat, +r[0].lon));
 }
@@ -408,65 +334,7 @@ function exportUpgradeList() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Upgrade');
   XLSX.writeFile(wb, 'tap_diem_can_nang_cap.xlsx');
 }
-
-  const input = document.getElementById("searchInput");
-const suggestBox = document.getElementById("suggestBox");
-
-let suggestTimer = null;
-
-input.addEventListener("input", () => {
-  const q = input.value.trim();
-  if (q.length < 3) {
-    suggestBox.style.display = "none";
-    return;
-  }
-
-  clearTimeout(suggestTimer);
-  suggestTimer = setTimeout(() => {
-    fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`
-    )
-      .then(r => r.json())
-      .then(data => {
-        suggestBox.innerHTML = "";
-        if (!data.length) {
-          suggestBox.style.display = "none";
-          return;
-        }
-
-        data.forEach(item => {
-          const div = document.createElement("div");
-          div.className = "suggest-item";
-          div.textContent = item.display_name;
-
-          div.onclick = () => {
-            input.value = item.display_name;
-            suggestBox.style.display = "none";
-            handleCustomer(+item.lat, +item.lon);
-          };
-
-          suggestBox.appendChild(div);
-        });
-
-        suggestBox.style.display = "block";
-      });
-  }, 300); // debounce tránh spam API
-});
-
-// Ẩn gợi ý khi click ra ngoài
-document.addEventListener("click", e => {
-  if (!e.target.closest(".search-row")) {
-    suggestBox.style.display = "none";
-  }
-});
-  
 </script>
 
 </body>
 </html>
-
-
-
-
-
-
