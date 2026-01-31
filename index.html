@@ -175,7 +175,6 @@ function validateLatLng(lat, lng) {
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
 
-  // ✅ BỔ SUNG DÒNG NÀY – CHỐT HẠ
   if (lat === 0 && lng === 0) return false;
 
   return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
@@ -367,63 +366,12 @@ const suggestBox = document.getElementById("suggestBox");
 
 let suggestTimer = null;
 
-let suggestTimer = null;
-
 input.addEventListener("input", () => {
-  clearTimeout(suggestTimer);
-
-  suggestTimer = setTimeout(() => {
-    // 1️⃣ Lấy từ khóa
-    const q = input.value.trim();
-    if (q.length < 3) {
-      suggestBox.style.display = "none";
-      return;
-    }
-
-    // 2️⃣ Đảm bảo map đã sẵn sàng
-    if (!map) return;
-
-    // 3️⃣ Gọi Nominatim – chỉ Việt Nam
-    const url =
-      `https://nominatim.openstreetmap.org/search` +
-      `?format=json` +
-      `&limit=5` +
-      `&countrycodes=vn` + // 🇻🇳 CHỈ VIỆT NAM
-      `&q=${encodeURIComponent(q)}`;
-
-    fetch(url)
-      .then(r => r.json())
-      .then(data => {
-        suggestBox.innerHTML = "";
-
-        if (!Array.isArray(data) || !data.length) {
-          suggestBox.style.display = "none";
-          return;
-        }
-
-        data.forEach(item => {
-          const div = document.createElement("div");
-          div.className = "suggest-item";
-          div.textContent = item.display_name;
-
-          div.onclick = () => {
-            input.value = item.display_name;
-            suggestBox.style.display = "none";
-            handleCustomer(+item.lat, +item.lon); // chỉ zoom khi click
-          };
-
-          suggestBox.appendChild(div);
-        });
-
-        suggestBox.style.display = "block";
-      })
-      .catch(err => {
-        console.error("Suggest error:", err);
-        suggestBox.style.display = "none";
-      });
-
-  }, 300); // debounce
-});
+  const q = input.value.trim();
+  if (q.length < 3) {
+    suggestBox.style.display = "none";
+    return;
+  }
 
   clearTimeout(suggestTimer);
   suggestTimer = setTimeout(() => {
@@ -468,7 +416,6 @@ document.addEventListener("click", e => {
 
 </body>
 </html>
-
 
 
 
