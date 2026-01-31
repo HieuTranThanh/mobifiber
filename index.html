@@ -1,266 +1,254 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8" />
-<title>Bản đồ FTTH – Hiệu suất port GPON</title>
+  <meta charset="UTF-8">
+  <title>Bản đồ hiệu suất FTTH GPON</title>
 
-<!-- Leaflet -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<style>
-  body { margin:0; font-family: Arial, sans-serif; }
-  #map { height: 100vh; }
-  .control-panel {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    background: #fff;
-    padding: 10px;
-    z-index: 1000;
-    width: 300px;
-    box-shadow: 0 0 5px rgba(0,0,0,0.3);
-  }
-  .legend div { margin-bottom: 4px; }
-  .blink {
-    animation: blink 1s infinite;
-  }
-  @keyframes blink {
-    0% { opacity: 1; }
-    50% { opacity: 0.2; }
-    100% { opacity: 1; }
-  }
-</style>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      height: 100vh;
+    }
+
+    .panel {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: #fff;
+      padding: 10px;
+      width: 320px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .panel h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    input, select, button {
+      width: 100%;
+      margin-bottom: 6px;
+      padding: 6px;
+    }
+
+    .legend div {
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .color-box {
+      width: 14px;
+      height: 14px;
+      margin-right: 6px;
+    }
+
+    .blink {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0% { opacity: 1; }
+      50% { opacity: 0.3; }
+      100% { opacity: 1; }
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="control-panel">
-  <b>🔍 Tìm kiếm</b><br>
-  <input id="searchInput" placeholder="Địa chỉ hoặc lat,lng" style="width:100%">
-  <button onclick="searchLocation()">Tìm</button>
+<div id="map"></div>
 
-  <hr>
+<div class="panel">
+  <h3>FTTH – Hiệu suất tập điểm</h3>
 
-  <b>🎚 Filter hiệu suất</b><br>
-  <select id="usageFilter" onchange="applyFilter()">
+  <input id="searchInput" placeholder="Nhập địa chỉ hoặc Lat,Long">
+  <button onclick="searchLocation()">Tìm kiếm</button>
+
+  <select id="filterSelect" onchange="applyFilter()">
     <option value="all">Tất cả</option>
-    <option value="<20">&lt; 20%</option>
-    <option value="20-50">20 – 50%</option>
-    <option value="50-80">50 – 80%</option>
-    <option value=">=80">≥ 80%</option>
+    <option value="blue">&lt; 20%</option>
+    <option value="green">20% – &lt;50%</option>
+    <option value="yellow">50% – &lt;80%</option>
+    <option value="red">80% – &lt;100%</option>
+    <option value="black">&gt;= 100%</option>
   </select>
 
-  <hr>
+  <button onclick="exportUpgradeExcel()">Xuất DS cần nâng cấp</button>
 
-  <button onclick="exportUpgradeCSV()">
-    Danh sách tập điểm cần nâng cấp
-  </button>
-
-  <hr>
-
-  <b>🎨 Legend</b>
   <div class="legend">
-    <div style="color:blue">● &lt;20%</div>
-    <div style="color:green">● 20–50%</div>
-    <div style="color:orange">● 50–80%</div>
-    <div style="color:red">● 80–100%</div>
-    <div style="color:black">● ≥100%</div>
+    <div><span class="color-box" style="background:#3498db"></span>&lt; 20%</div>
+    <div><span class="color-box" style="background:#2ecc71"></span>20 – 50%</div>
+    <div><span class="color-box" style="background:#f1c40f"></span>50 – 80%</div>
+    <div><span class="color-box" style="background:#e74c3c"></span>80 – 100%</div>
+    <div><span class="color-box" style="background:#000"></span>&gt;= 100%</div>
   </div>
 </div>
 
-<div id="map"></div>
-
-<!-- Lib -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://www.gstatic.com/charts/loader.js"></script>
-
 <script>
-/* ===================== CONFIG ===================== */
-const SHEET_ID = "1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq";
-const SHEET_NAME = "Danh sách tập điểm S2";
+/* ================= MAP INIT ================= */
+const map = L.map("map").setView([16, 108], 6);
 
-/* ===================== GLOBAL ===================== */
-let map;
-let allPoints = [];
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "&copy; OpenStreetMap"
+}).addTo(map);
+
+/* ================= DATA ================= */
+const SHEET_JSON =
+  "https://docs.google.com/spreadsheets/d/1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq/gviz/tq?sheet=Danh%20s%C3%A1ch%20t%E1%BA%ADp%20%C4%91i%E1%BB%83m%20S2&tq=select%20*";
+
 let circles = [];
-let customerMarker;
-let suggestLines = [];
+let allBounds = [];
 
-/* ===================== INIT MAP ===================== */
-map = L.map('map').setView([16, 108], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-/* ===================== LOAD GOOGLE SHEET ===================== */
-google.charts.load('current', { packages: ['corechart'] });
-google.charts.setOnLoadCallback(loadDataFromSheet);
-
-function loadDataFromSheet() {
-  const query = new google.visualization.Query(
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`
-  );
-  query.send(handleSheetResponse);
+/* ================= UTIL ================= */
+function getColor(rate) {
+  if (rate < 0.2) return "blue";
+  if (rate < 0.5) return "green";
+  if (rate < 0.8) return "yellow";
+  if (rate < 1) return "red";
+  return "black";
 }
 
-function handleSheetResponse(response) {
-  const data = response.getDataTable();
-  for (let i = 0; i < data.getNumberOfRows(); i++) {
-    const lat = Number(data.getValue(i, 9));
-    const lng = Number(data.getValue(i, 10));
-    if (!isValidLatLng(lat, lng)) continue;
+/* ================= LOAD GOOGLE SHEET ================= */
+fetch(SHEET_JSON)
+  .then(res => res.text())
+  .then(text => {
+    const json = JSON.parse(text.substring(47).slice(0, -2));
+    const rows = json.table.rows;
 
-    allPoints.push({
-      name: data.getValue(i, 2),
-      maxPort: data.getValue(i, 3),
-      usedPort: data.getValue(i, 4),
-      freePort: data.getValue(i, 5),
-      usage: Number(data.getValue(i, 7)) * 100,
-      lat, lng
+    rows.forEach(r => {
+      const name = r.c[2]?.v;
+      const maxPort = r.c[3]?.v;
+      const usedPort = r.c[4]?.v;
+      const freePort = r.c[5]?.v;
+      const rate = r.c[7]?.v;
+      const lat = parseFloat(r.c[9]?.v);
+      const lng = parseFloat(r.c[10]?.v);
+
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      const color = getColor(rate);
+
+      const circle = L.circle([lat, lng], {
+        radius: 300,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.5,
+        weight: 2
+      }).addTo(map);
+
+      circle.bindPopup(`
+        <b>${name}</b><br>
+        Lat: ${lat}<br>
+        Long: ${lng}<br>
+        Dung lượng: ${maxPort}<br>
+        Đã dùng: ${usedPort}<br>
+        Còn lại: ${freePort}<br>
+        Hiệu suất: ${(rate * 100).toFixed(1)}%
+      `);
+
+      circles.push({
+        circle,
+        color,
+        rate,
+        lat,
+        lng,
+        name,
+        free: freePort
+      });
+
+      allBounds.push([lat, lng]);
     });
-  }
-  drawMapPoints(allPoints);
-}
 
-/* ===================== VALIDATE ===================== */
-function isValidLatLng(lat, lng) {
-  return (
-    typeof lat === "number" &&
-    typeof lng === "number" &&
-    !isNaN(lat) &&
-    !isNaN(lng) &&
-    lat >= -90 && lat <= 90 &&
-    lng >= -180 && lng <= 180
-  );
-}
-
-/* ===================== DRAW MAP ===================== */
-function getColorByUsage(u) {
-  if (u >= 100) return "black";
-  if (u >= 80) return "red";
-  if (u >= 50) return "orange";
-  if (u >= 20) return "green";
-  return "blue";
-}
-
-function drawMapPoints(points) {
-  circles.forEach(c => map.removeLayer(c));
-  circles = [];
-  const bounds = [];
-
-  points.forEach(p => {
-    const circle = L.circle([p.lat, p.lng], {
-      radius: 300,
-      color: getColorByUsage(p.usage),
-      fillColor: getColorByUsage(p.usage),
-      fillOpacity: 0.5,
-      weight: 2
-    }).addTo(map);
-
-    circle.bindPopup(`
-      <b>${p.name}</b><br>
-      Dung lượng: ${p.maxPort}<br>
-      Đã dùng: ${p.usedPort}<br>
-      Còn lại: ${p.freePort}<br>
-      Hiệu suất: ${p.usage.toFixed(1)}%
-    `);
-
-    circle.__data = p;
-    circles.push(circle);
-    bounds.push([p.lat, p.lng]);
+    if (allBounds.length > 0) {
+      map.fitBounds(allBounds);
+    }
   });
 
-  if (bounds.length) map.fitBounds(bounds);
-}
-
-/* ===================== FILTER ===================== */
+/* ================= FILTER ================= */
 function applyFilter() {
-  const f = document.getElementById("usageFilter").value;
-  const filtered = allPoints.filter(p => {
-    if (f === "all") return true;
-    if (f === "<20") return p.usage < 20;
-    if (f === "20-50") return p.usage >= 20 && p.usage < 50;
-    if (f === "50-80") return p.usage >= 50 && p.usage < 80;
-    if (f === ">=80") return p.usage >= 80;
+  const f = document.getElementById("filterSelect").value;
+  circles.forEach(o => {
+    if (f === "all" || o.color === f) {
+      map.addLayer(o.circle);
+    } else {
+      map.removeLayer(o.circle);
+    }
   });
-  drawMapPoints(filtered);
 }
 
-/* ===================== SEARCH ===================== */
+/* ================= SEARCH ================= */
 function searchLocation() {
   const q = document.getElementById("searchInput").value.trim();
   if (!q) return;
 
   if (q.includes(",")) {
     const [lat, lng] = q.split(",").map(Number);
-    focusCustomer(lat, lng);
+    focusLocation(lat, lng);
   } else {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`)
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
       .then(r => r.json())
-      .then(r => {
-        if (r.length) focusCustomer(Number(r[0].lat), Number(r[0].lon));
+      .then(d => {
+        if (d.length > 0) {
+          focusLocation(+d[0].lat, +d[0].lon);
+        }
       });
   }
 }
 
-function focusCustomer(lat, lng) {
-  if (!isValidLatLng(lat, lng)) return;
-  if (customerMarker) map.removeLayer(customerMarker);
-  customerMarker = L.marker([lat, lng]).addTo(map);
-  map.setView([lat, lng], 16);
-  suggestNearest(lat, lng);
+function focusLocation(lat, lng) {
+  map.setView([lat, lng], 15);
+
+  L.marker([lat, lng])
+    .addTo(map)
+    .bindPopup("Vị trí khách hàng")
+    .openPopup();
+
+  const candidates = circles
+    .filter(c => c.free > 0)
+    .map(c => ({
+      ...c,
+      dist: map.distance([lat, lng], [c.lat, c.lng])
+    }))
+    .sort((a, b) => a.dist - b.dist || a.rate - b.rate)
+    .slice(0, 3);
+
+  candidates.forEach(c => {
+    c.circle.setStyle({ weight: 4 });
+    c.circle.getElement()?.classList.add("blink");
+    c.circle.bindTooltip(`${Math.round(c.dist)} m`).openTooltip();
+  });
 }
 
-/* ===================== SUGGEST ===================== */
-function haversine(a, b) {
-  const R = 6371000;
-  const dLat = (b.lat - a.lat) * Math.PI / 180;
-  const dLng = (b.lng - a.lng) * Math.PI / 180;
-  const x = Math.sin(dLat/2)**2 +
-            Math.cos(a.lat*Math.PI/180) *
-            Math.cos(b.lat*Math.PI/180) *
-            Math.sin(dLng/2)**2;
-  return 2 * R * Math.asin(Math.sqrt(x));
-}
+/* ================= EXPORT EXCEL ================= */
+function exportUpgradeExcel() {
+  let csv = "Tên tập điểm,Lat,Long,Hiệu suất,Ưu tiên\n";
 
-function suggestNearest(lat, lng) {
-  suggestLines.forEach(l => map.removeLayer(l));
-  suggestLines = [];
-
-  const customer = { lat, lng };
-  const candidates = allPoints
-    .filter(p => p.freePort > 0)
-    .map(p => ({ ...p, dist: haversine(customer, p) }))
-    .sort((a,b) => a.dist - b.dist || a.usage - b.usage)
-    .slice(0,3);
-
-  candidates.forEach((p, idx) => {
-    const line = L.polyline([[lat,lng],[p.lat,p.lng]], {
-      color: "green",
-      dashArray: "5,5"
-    }).addTo(map);
-    line.bindTooltip(`${Math.round(p.dist)} m`);
-    suggestLines.push(line);
-
-    const c = circles.find(c => c.__data === p);
-    if (c) {
-      c.setStyle({ weight: 5 });
-      c.getElement().classList.add("blink");
+  circles.forEach(c => {
+    if (c.rate >= 0.8) {
+      const priority = c.rate >= 1 ? "Ưu tiên 1" : "Ưu tiên 2";
+      csv += `${c.name},${c.lat},${c.lng},${(c.rate*100).toFixed(1)}%,${priority}\n`;
     }
   });
-}
 
-/* ===================== EXPORT ===================== */
-function exportUpgradeCSV() {
-  let csv = "Tên tập điểm,Latitude,Longitude,Hiệu suất (%),Mức ưu tiên\n";
-  allPoints.filter(p => p.usage >= 80).forEach(p => {
-    const pr = p.usage >= 100 ? "Ưu tiên 1" : "Ưu tiên 2";
-    csv += `${p.name},${p.lat},${p.lng},${p.usage.toFixed(1)},${pr}\n`;
-  });
-
-  const blob = new Blob([csv], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "tap_diem_can_nang_cap.csv";
-  a.click();
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "tap_diem_can_nang_cap.csv";
+  link.click();
 }
 </script>
 
