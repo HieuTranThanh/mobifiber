@@ -179,22 +179,31 @@ const hintMarker = L.marker(map.getCenter(), {
   interactive: false
 }).addTo(map);
 
+// Marker ẩn để gắn tooltip hướng dẫn
+const hintMarker = L.marker(map.getCenter(), {
+  opacity: 0,
+  interactive: false
+}).addTo(map);
+
 // Tooltip hướng dẫn double click
-map.bindTooltip(
-  "🖱️ Double click để chọn vị trí",
-  {
-    permanent: true,   // ⭐ BẮT BUỘC
+hintMarker
+  .bindTooltip("🖱️ Double click để chọn vị trí", {
+    permanent: true,
     direction: "top",
     offset: [0, -10],
     opacity: 0.9
-  }
-);
+  })
+  .openTooltip();
 
-// Mở tooltip ngay khi load map
-map.openTooltip();
+// Giữ tooltip luôn ở giữa bản đồ
+map.on("move", () => {
+  hintMarker.setLatLng(map.getCenter());
+});
   
 map.on("dblclick", function (e) {
-  map.closeTooltip(); 
+  // Ẩn tooltip hướng dẫn
+  hintMarker.remove();
+  
   const lat = e.latlng.lat.toFixed(6);
   const lng = e.latlng.lng.toFixed(6);
 
@@ -466,6 +475,7 @@ document.addEventListener("click", e => {
 
 </body>
 </html>
+
 
 
 
