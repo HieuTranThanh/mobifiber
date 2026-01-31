@@ -1,184 +1,115 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8">
-<title>Bản đồ FTTH – Blink chuẩn</title>
+<meta charset="UTF-8" />
+<title>FTTH - Blink Top 3 Points</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://www.gstatic.com/charts/loader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
 
 <style>
-html, body { height:100%; margin:0; font-family:Arial }
-#map { height:100% }
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+  #map {
+    width: 100%;
+    height: 100%;
+  }
 
-.control {
-  position:absolute; top:10px; left:10px; z-index:1000;
-  background:#fff; padding:10px; width:260px;
-  border-radius:6px; box-shadow:0 2px 6px rgba(0,0,0,.3)
-}
+  /* ===== HIỆU ỨNG NHẤP NHÁY VIỀN ===== */
+  .blink-ring {
+    animation: blinkStroke 1s infinite ease-in-out;
+  }
 
-.control input, button, select {
-  width:100%; margin-bottom:6px; padding:6px
-}
-
-/* ===== BLINK ===== */
-.blink {
-  animation: blinkStroke 1.2s infinite;
-}
-
-.blink-fast {
-  animation: blinkStroke 0.6s infinite;
-}
-
-@keyframes blinkStroke {
-  0% { stroke-opacity:1; }
-  50% { stroke-opacity:0; }
-  100% { stroke-opacity:1; }
-}
+  @keyframes blinkStroke {
+    0% {
+      opacity: 1;
+      stroke-width: 4;
+    }
+    50% {
+      opacity: 0.2;
+      stroke-width: 1.5;
+    }
+    100% {
+      opacity: 1;
+      stroke-width: 4;
+    }
+  }
 </style>
 </head>
 
 <body>
-
-<div class="control">
-  <input id="searchInput" placeholder="Địa chỉ hoặc lat,lng">
-  <button onclick="searchLocation()">Tìm khách hàng</button>
-</div>
-
 <div id="map"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ================= CONFIG ================= */
-const SHEET_ID = "1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq";
-const SHEET_NAME = "Danh sách tập điểm S2";
+/* ================= MAP ================= */
+const map = L.map('map').setView([10.762622, 106.660172], 14);
 
-let map;
-let circles = [];
-let lines = [];
-let customerMarker;
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
 
-/* ================= INIT ================= */
-google.charts.load("current", { packages:["corechart"] });
-google.charts.setOnLoadCallback(init);
+/* ================= DATA ================= */
+const customer = [10.762622, 106.660172];
 
-function init() {
-  map = L.map("map").setView([16,108],6);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-  loadData();
-}
+const points = [
+  { name: 'Tập điểm A', lat: 10.766, lng: 106.655, score: 95 },
+  { name: 'Tập điểm B', lat: 10.758, lng: 106.662, score: 92 },
+  { name: 'Tập điểm C', lat: 10.764, lng: 106.668, score: 90 },
+  { name: 'Tập điểm D', lat: 10.770, lng: 106.670, score: 80 }
+];
 
-/* ================= LOAD DATA ================= */
-function loadData() {
-  const q = new google.visualization.Query(
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`
-  );
+/* ================= CUSTOMER ================= */
+L.circleMarker(customer, {
+  radius: 7,
+  color: '#000',
+  fillColor: '#ff0000',
+  fillOpacity: 1
+}).addTo(map).bindPopup('Khách hàng');
 
-  q.send(res => {
-    const t = res.getDataTable();
-    for (let i = 0; i < t.getNumberOfRows(); i++) {
-      const lat = +t.getValue(i,9);
-      const lng = +t.getValue(i,10);
-      if (isNaN(lat) || isNaN(lng)) continue;
+/* ================= SORT TOP 3 ================= */
+const top3 = points
+  .sort((a, b) => b.score - a.score)
+  .slice(0, 3);
 
-      const rate = t.getValue(i,7) * 100;
-      const circle = L.circle([lat,lng], {
-        radius:300,
-        color:"#555",
-        weight:2,
-        fillOpacity:0.5
-      }).addTo(map);
+/* ================= DRAW ================= */
+points.forEach(p => {
+  const isTop3 = top3.includes(p);
 
-      circles.push({
-        name: t.getValue(i,2),
-        lat, lng,
-        free: t.getValue(i,5),
-        rate,
-        circle
-      });
-    }
+  /* ---- VÒNG TRÒN CHÍNH ---- */
+  L.circleMarker([p.lat, p.lng], {
+    radius: 6,
+    color: '#0066ff',
+    weight: 2,
+    fillColor: '#0066ff',
+    fillOpacity: 0.8
+  })
+  .addTo(map)
+  .bindPopup(`${p.name}<br>Score: ${p.score}`);
 
-    map.fitBounds(L.featureGroup(circles.map(c=>c.circle)).getBounds());
-  });
-}
-
-/* ================= SEARCH (THEO ĐÚNG CODE BẠN ĐƯA) ================= */
-function searchLocation() {
-  clearSuggest();
-
-  const q = document.getElementById("searchInput").value.trim();
-  if (!q) return;
-
-  if (q.includes(",")) {
-    const [lat, lng] = q.split(",").map(Number);
-    focusLocation(lat, lng);
-  } else {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.length > 0) {
-          focusLocation(+d[0].lat, +d[0].lon);
-        }
-      });
-  }
-}
-
-function focusLocation(lat, lng) {
-  map.setView([lat, lng], 15);
-
-  customerMarker = L.marker([lat, lng])
-    .addTo(map)
-    .bindPopup("Vị trí khách hàng")
-    .openPopup();
-
-  const candidates = circles
-    .filter(c => c.free > 0)
-    .map(c => ({
-      ...c,
-      dist: map.distance([lat, lng], [c.lat, c.lng])
-    }))
-    .sort((a, b) => a.dist - b.dist || a.rate - b.rate)
-    .slice(0, 3);
-
-  candidates.forEach((c, idx) => {
-    c.circle.setStyle({
-      weight: idx === 0 ? 5 : 4,
-      color: idx === 0 ? "#000" : "#555"
-    });
-
-    const el = c.circle.getElement();
-    if (el) {
-      el.classList.add(idx === 0 ? "blink-fast" : "blink");
-    }
-
-    const line = L.polyline([[lat,lng],[c.lat,c.lng]], {
-      dashArray:"6,6",
-      color:"#000"
+  /* ---- VIỀN NHẤP NHÁY (CHỈ TOP 3) ---- */
+  if (isTop3) {
+    L.circleMarker([p.lat, p.lng], {
+      radius: 9,
+      color: '#0066ff',
+      weight: 4,
+      fill: false,
+      opacity: 1,
+      className: 'blink-ring'
     }).addTo(map);
 
-    c.circle.bindTooltip(`${Math.round(c.dist)} m`).openTooltip();
-    lines.push(line);
-  });
-}
-
-/* ================= CLEAR ================= */
-function clearSuggest() {
-  lines.forEach(l => map.removeLayer(l));
-  lines = [];
-
-  circles.forEach(c => {
-    const el = c.circle.getElement();
-    if (el) el.classList.remove("blink","blink-fast");
-    c.circle.closeTooltip();
-  });
-
-  if (customerMarker) {
-    map.removeLayer(customerMarker);
-    customerMarker = null;
+    /* ---- ĐƯỜNG NỐI ---- */
+    L.polyline([customer, [p.lat, p.lng]], {
+      color: '#ff6600',
+      dashArray: '6,4',
+      weight: 2
+    }).addTo(map);
   }
-}
+});
 </script>
-
 </body>
 </html>
