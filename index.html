@@ -104,6 +104,28 @@
     .suggest-item:hover {
       background: #f0f0f0;
     }
+
+    /* ===== Nút định vị tôi ===== */
+    .locate-btn {
+      position: fixed;
+      right: 10px;
+      top: 60px;          /* dưới legend */
+      z-index: 1001;
+    
+      background: white;
+      border: none;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+    
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+    }
+    
+    .locate-btn:hover {
+      background: #f0f0f0;
+    }
     
   </style>
 </head>
@@ -154,6 +176,9 @@
   </div>
 
 <div id="map"></div>
+<button class="locate-btn" onclick="locateMe()" title="Định vị tôi">
+  📍
+</button>
 
 <script>
 /* ================= GLOBAL ================= */
@@ -440,8 +465,57 @@ document.addEventListener("click", e => {
     suggestBox.style.display = "none";
   }
 });
+
+let myLocationMarker = null;
+let myAccuracyCircle = null;
+
+function locateMe() {
+  if (!navigator.geolocation) {
+    alert("Trình duyệt không hỗ trợ định vị");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const accuracy = pos.coords.accuracy;
+
+      // Xóa vị trí cũ
+      if (myLocationMarker) map.removeLayer(myLocationMarker);
+      if (myAccuracyCircle) map.removeLayer(myAccuracyCircle);
+
+      // Marker vị trí tôi
+      myLocationMarker = L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup("📍 Vị trí của tôi (ước lượng)")
+        .openPopup();
+
+      // Vòng tròn sai số
+      myAccuracyCircle = L.circle([lat, lng], {
+        radius: accuracy,
+        color: "blue",
+        fillColor: "blue",
+        fillOpacity: 0.1
+      }).addTo(map);
+
+      map.setView([lat, lng], 15);
+
+      // Gọi logic xử lý khách hàng sẵn có
+      handleCustomer(lat, lng);
+    },
+    err => {
+      alert("Không lấy được vị trí: " + err.message);
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 10000
+    }
+  );
+}
   
 </script>
 
 </body>
 </html>
+
