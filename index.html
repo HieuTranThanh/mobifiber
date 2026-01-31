@@ -1,255 +1,254 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Bản đồ hiệu suất FTTH GPON</title>
+<meta charset="utf-8" />
+<title>Bản đồ hiệu suất FTTH GPON</title>
 
-  <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet -->
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-    }
-    #map {
-      height: 100vh;
-    }
+<!-- Google Visualization -->
+<script src="https://www.gstatic.com/charts/loader.js"></script>
 
-    .panel {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1000;
-      background: #fff;
-      padding: 10px;
-      width: 320px;
-      border-radius: 6px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    }
+<!-- SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
 
-    .panel h3 {
-      margin: 0 0 8px;
-      font-size: 16px;
-    }
+<style>
+  body { margin: 0; font-family: Arial, sans-serif; }
+  #map { height: 100vh; }
 
-    input, select, button {
-      width: 100%;
-      margin-bottom: 6px;
-      padding: 6px;
-    }
+  .panel {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    width: 320px;
+  }
 
-    .legend div {
-      display: flex;
-      align-items: center;
-      font-size: 13px;
-      margin-bottom: 4px;
-    }
+  .panel input, .panel select, .panel button {
+    width: 100%;
+    margin-top: 5px;
+    padding: 6px;
+  }
 
-    .color-box {
-      width: 14px;
-      height: 14px;
-      margin-right: 6px;
-    }
+  .legend {
+    margin-top: 10px;
+    font-size: 13px;
+  }
 
-    .blink {
-      animation: blink 1s infinite;
-    }
+  .legend div {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+  }
 
-    @keyframes blink {
-      0% { opacity: 1; }
-      50% { opacity: 0.3; }
-      100% { opacity: 1; }
-    }
-  </style>
+  .color-box {
+    width: 16px;
+    height: 16px;
+    margin-right: 6px;
+  }
+
+  .best {
+    font-weight: bold;
+    color: #d32f2f;
+  }
+</style>
 </head>
 
 <body>
 
-<div id="map"></div>
-
 <div class="panel">
-  <h3>FTTH – Hiệu suất tập điểm</h3>
+  <b>Tìm khách hàng</b>
+  <input id="searchInput" placeholder="Địa chỉ hoặc lat,long" />
+  <button onclick="searchLocation()">Tìm & gợi ý tập điểm</button>
 
-  <input id="searchInput" placeholder="Nhập địa chỉ hoặc Lat,Long">
-  <button onclick="searchLocation()">Tìm kiếm</button>
-
-  <select id="filterSelect" onchange="applyFilter()">
+  <b>Lọc hiệu suất</b>
+  <select id="filterEfficiency" onchange="applyFilter()">
     <option value="all">Tất cả</option>
-    <option value="blue">&lt; 20%</option>
-    <option value="green">20% – &lt;50%</option>
-    <option value="yellow">50% – &lt;80%</option>
-    <option value="red">80% – &lt;100%</option>
-    <option value="black">&gt;= 100%</option>
+    <option value="0-20">&lt; 20%</option>
+    <option value="20-50">20–50%</option>
+    <option value="50-80">50–80%</option>
+    <option value="80-100">≥ 80%</option>
   </select>
 
-  <button onclick="exportUpgradeExcel()">Xuất DS cần nâng cấp</button>
+  <button onclick="exportUpgradeList()">
+    Danh sách tập điểm cần nâng cấp
+  </button>
+
+  <div id="suggestion"></div>
 
   <div class="legend">
-    <div><span class="color-box" style="background:#3498db"></span>&lt; 20%</div>
-    <div><span class="color-box" style="background:#2ecc71"></span>20 – 50%</div>
-    <div><span class="color-box" style="background:#f1c40f"></span>50 – 80%</div>
-    <div><span class="color-box" style="background:#e74c3c"></span>80 – 100%</div>
-    <div><span class="color-box" style="background:#000"></span>&gt;= 100%</div>
+    <b>Chú giải</b>
+    <div><span class="color-box" style="background:#2196f3"></span>&lt;20%</div>
+    <div><span class="color-box" style="background:#4caf50"></span>20–50%</div>
+    <div><span class="color-box" style="background:#ffeb3b"></span>50–80%</div>
+    <div><span class="color-box" style="background:#f44336"></span>80–100%</div>
+    <div><span class="color-box" style="background:#000"></span>≥100%</div>
   </div>
 </div>
 
+<div id="map"></div>
+
 <script>
-/* ================= MAP INIT ================= */
-const map = L.map("map").setView([16, 108], 6);
+google.charts.load("current", { packages: ["corechart"] });
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: "&copy; OpenStreetMap"
-}).addTo(map);
+const SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq/gviz/tq?sheet=Danh%20sách%20tập%20điểm%20S2";
 
-/* ================= DATA ================= */
-const SHEET_JSON =
-  "https://docs.google.com/spreadsheets/d/1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq/gviz/tq?sheet=Danh%20s%C3%A1ch%20t%E1%BA%ADp%20%C4%91i%E1%BB%83m%20S2&tq=select%20*";
+let map = L.map("map").setView([16, 108], 6);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
 
-let circles = [];
-let allBounds = [];
+let allPoints = [];
+let layerGroup = L.layerGroup().addTo(map);
+let highlightLayer = L.layerGroup().addTo(map);
 
-/* ================= UTIL ================= */
-function getColor(rate) {
-  if (rate < 0.2) return "blue";
-  if (rate < 0.5) return "green";
-  if (rate < 0.8) return "yellow";
-  if (rate < 1) return "red";
-  return "black";
+function efficiencyColor(e) {
+  if (e >= 100) return "#000";
+  if (e >= 80) return "#f44336";
+  if (e >= 50) return "#ffeb3b";
+  if (e >= 20) return "#4caf50";
+  return "#2196f3";
 }
 
-/* ================= LOAD GOOGLE SHEET ================= */
-fetch(SHEET_JSON)
-  .then(res => res.text())
-  .then(text => {
-    const json = JSON.parse(text.substring(47).slice(0, -2));
-    const rows = json.table.rows;
+function loadData() {
+  const query = new google.visualization.Query(SHEET_URL);
+  query.send(res => {
+    const table = res.getDataTable();
+    for (let i = 0; i < table.getNumberOfRows(); i++) {
+      const lat = table.getValue(i, 9);
+      const lng = table.getValue(i, 10);
+      if (!lat || !lng) continue;
 
-    rows.forEach(r => {
-      const name = r.c[2]?.v;
-      const maxPort = r.c[3]?.v;
-      const usedPort = r.c[4]?.v;
-      const freePort = r.c[5]?.v;
-      const rate = r.c[7]?.v;
-      const lat = parseFloat(r.c[9]?.v);
-      const lng = parseFloat(r.c[10]?.v);
+      const eff = table.getValue(i, 7) * 100;
 
-      if (isNaN(lat) || isNaN(lng)) return;
-
-      const color = getColor(rate);
-
-      const circle = L.circle([lat, lng], {
-        radius: 300,
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.5,
-        weight: 2
-      }).addTo(map);
-
-      circle.bindPopup(`
-        <b>${name}</b><br>
-        Lat: ${lat}<br>
-        Long: ${lng}<br>
-        Dung lượng: ${maxPort}<br>
-        Đã dùng: ${usedPort}<br>
-        Còn lại: ${freePort}<br>
-        Hiệu suất: ${(rate * 100).toFixed(1)}%
-      `);
-
-      circles.push({
-        circle,
-        color,
-        rate,
+      allPoints.push({
+        name: table.getValue(i, 2),
+        max: table.getValue(i, 3),
+        used: table.getValue(i, 4),
+        free: table.getValue(i, 5),
+        eff,
         lat,
-        lng,
-        name,
-        free: freePort
+        lng
       });
-
-      allBounds.push([lat, lng]);
-    });
-
-    if (allBounds.length > 0) {
-      map.fitBounds(allBounds);
     }
-  });
-
-/* ================= FILTER ================= */
-function applyFilter() {
-  const f = document.getElementById("filterSelect").value;
-  circles.forEach(o => {
-    if (f === "all" || o.color === f) {
-      map.addLayer(o.circle);
-    } else {
-      map.removeLayer(o.circle);
-    }
+    renderPoints(allPoints);
   });
 }
 
-/* ================= SEARCH ================= */
+function renderPoints(points) {
+  layerGroup.clearLayers();
+  let bounds = [];
+  points.forEach(p => {
+    const c = L.circle([p.lat, p.lng], {
+      radius: 300,
+      color: efficiencyColor(p.eff),
+      fillOpacity: 0.5
+    }).bindPopup(`
+      <b>${p.name}</b><br/>
+      Dung lượng: ${p.max}<br/>
+      Đã dùng: ${p.used}<br/>
+      Còn lại: ${p.free}<br/>
+      Hiệu suất: ${p.eff.toFixed(1)}%
+    `);
+    c.addTo(layerGroup);
+    bounds.push([p.lat, p.lng]);
+  });
+  if (bounds.length) map.fitBounds(bounds);
+}
+
+function applyFilter() {
+  const v = document.getElementById("filterEfficiency").value;
+  if (v === "all") return renderPoints(allPoints);
+
+  const [min, max] = v.split("-").map(Number);
+  const filtered = allPoints.filter(p =>
+    max ? p.eff >= min && p.eff < max : p.eff >= min
+  );
+  renderPoints(filtered);
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat/2)**2 +
+    Math.cos(lat1*Math.PI/180) *
+    Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
 function searchLocation() {
+  highlightLayer.clearLayers();
+  document.getElementById("suggestion").innerHTML = "";
+
   const q = document.getElementById("searchInput").value.trim();
   if (!q) return;
 
   if (q.includes(",")) {
     const [lat, lng] = q.split(",").map(Number);
-    focusLocation(lat, lng);
+    handleCustomer(lat, lng);
   } else {
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
       .then(r => r.json())
       .then(d => {
-        if (d.length > 0) {
-          focusLocation(+d[0].lat, +d[0].lon);
-        }
+        if (d.length) handleCustomer(+d[0].lat, +d[0].lon);
       });
   }
 }
 
-function focusLocation(lat, lng) {
-  map.setView([lat, lng], 15);
+function handleCustomer(lat, lng) {
+  map.setView([lat, lng], 16);
+  L.marker([lat, lng]).addTo(highlightLayer)
+    .bindPopup("Vị trí khách hàng").openPopup();
 
-  L.marker([lat, lng])
-    .addTo(map)
-    .bindPopup("Vị trí khách hàng")
-    .openPopup();
-
-  const candidates = circles
-    .filter(c => c.free > 0)
-    .map(c => ({
-      ...c,
-      dist: map.distance([lat, lng], [c.lat, c.lng])
+  const candidates = allPoints
+    .filter(p => p.free > 0)
+    .map(p => ({
+      ...p,
+      dist: haversine(lat, lng, p.lat, p.lng)
     }))
-    .sort((a, b) => a.dist - b.dist || a.rate - b.rate)
+    .sort((a,b) => a.dist - b.dist)
     .slice(0, 3);
 
-  candidates.forEach(c => {
-    c.circle.setStyle({ weight: 4 });
-    c.circle.getElement()?.classList.add("blink");
-    c.circle.bindTooltip(`${Math.round(c.dist)} m`).openTooltip();
+  let html = "<b>Gợi ý tập điểm</b><br/>";
+  candidates.forEach((p,i) => {
+    L.polyline([[lat,lng],[p.lat,p.lng]], { dashArray: "5,5" })
+      .addTo(highlightLayer);
+    html += `${i===0?"<span class='best'>":""}
+      ${p.name}: ${p.dist.toFixed(0)} m
+      ${i===0?"</span>":""}<br/>`;
   });
+  document.getElementById("suggestion").innerHTML = html;
 }
 
-/* ================= EXPORT EXCEL ================= */
-function exportUpgradeExcel() {
-  let csv = "Tên tập điểm,Lat,Long,Hiệu suất,Ưu tiên\n";
+function exportUpgradeList() {
+  const rows = allPoints
+    .filter(p => p.eff >= 80)
+    .map(p => ({
+      "Tên tập điểm": p.name,
+      "Latitude": p.lat,
+      "Longitude": p.lng,
+      "Hiệu suất (%)": p.eff.toFixed(1),
+      "Mức ưu tiên": p.eff >= 100 ? "Ưu tiên 1" : "Ưu tiên 2"
+    }));
 
-  circles.forEach(c => {
-    if (c.rate >= 0.8) {
-      const priority = c.rate >= 1 ? "Ưu tiên 1" : "Ưu tiên 2";
-      csv += `${c.name},${c.lat},${c.lng},${(c.rate*100).toFixed(1)}%,${priority}\n`;
-    }
-  });
-
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "tap_diem_can_nang_cap.csv";
-  link.click();
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Nâng cấp");
+  XLSX.writeFile(wb, "tap_diem_can_nang_cap.xlsx");
 }
+
+google.charts.setOnLoadCallback(loadData);
 </script>
 
 </body>
