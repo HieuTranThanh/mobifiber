@@ -127,13 +127,45 @@
   }
 
   // ================== LOAD DATA ==================
-  fetch(SHEET_URL)
+    fetch(SHEET_URL)
     .then(res => res.text())
     .then(csv => {
-      const rows = csv.split('\n').map(r => r.split(','));
-      const data = rows.slice(1);
+      // Dùng parser đơn giản nhưng xử lý dấu phẩy trong ngoặc kép
+      const rows = [];
+      let current = [];
+      let inQuotes = false;
+      let value = '';
+
+      for (let i = 0; i < csv.length; i++) {
+        const c = csv[i];
+        if (c === '"') {
+          inQuotes = !inQuotes;
+        } else if (c === ',' && !inQuotes) {
+          current.push(value);
+          value = '';
+        } else if ((c === '
+' || c === '
+') && !inQuotes) {
+          if (value || current.length) {
+            current.push(value);
+            rows.push(current);
+            current = [];
+            value = '';
+          }
+        } else {
+          value += c;
+        }
+      }
+      if (value || current.length) {
+        current.push(value);
+        rows.push(current);
+      }
+
+      const data = rows.slice(1); // bỏ header
 
       data.forEach(r => {
+        // Cột theo Excel:
+        // C=2, D=3, E=4, F=5, H=7, I=8, J=9, K=10
         const lat = parseFloat(r[9]);
         const lng = parseFloat(r[10]);
         if (isNaN(lat) || isNaN(lng)) return;
