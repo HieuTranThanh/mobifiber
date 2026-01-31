@@ -39,7 +39,7 @@ html, body, #map {
 
 <script>
 // =====================
-// Khởi tạo map (view tạm, sẽ auto-fit sau)
+// Khởi tạo map
 // =====================
 const map = L.map("map").setView([10.78, 106.68], 12);
 
@@ -48,10 +48,11 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 // =====================
-// Search địa chỉ / tọa độ
+// Search địa chỉ / tọa độ KH
 // =====================
 L.Control.geocoder({
-  defaultMarkGeocode: true
+  placeholder: "Nhập địa chỉ hoặc tọa độ (lat,lng)",
+  defaultMarkGeocode: false
 })
 .on("markgeocode", function(e) {
   const c = e.geocode.center;
@@ -66,12 +67,12 @@ L.Control.geocoder({
 .addTo(map);
 
 // =====================
-// Hàm màu theo hiệu suất
+// Hàm xác định màu (đơn vị %)
 // =====================
-function getColor(eff) {
-  if (eff >= 100) return "black";
-  if (eff > 80) return "red";
-  if (eff > 50) return "orange";
+function getColor(percent) {
+  if (percent >= 100) return "black";
+  if (percent >= 80)  return "red";
+  if (percent >= 50)  return "orange";
   return "green";
 }
 
@@ -95,42 +96,41 @@ legend.addTo(map);
 // =====================
 // Google Sheet (GVIZ)
 // =====================
-const SHEET_ID = "1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq";
+const SHEET_ID   = "1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq";
 const SHEET_NAME = "Danh sách tập điểm S2";
 
 const sheetURL =
   `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?` +
   `sheet=${encodeURIComponent(SHEET_NAME)}&tq=select *`;
 
-// =====================
 // Bounds để auto zoom
-// =====================
 const bounds = L.latLngBounds([]);
 
 fetch(sheetURL)
   .then(res => res.text())
   .then(text => {
     const json = JSON.parse(
-      text.substring(
-        text.indexOf("{"),
-        text.lastIndexOf("}") + 1
-      )
+      text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1)
     );
 
     const rows = json.table.rows;
 
     rows.forEach(r => {
-      const name  = r.c[2]?.v;                 // C
-      const total = r.c[3]?.v;                 // D
-      const used  = r.c[4]?.v;                 // E
-      const free  = r.c[5]?.v;                 // F
-      const eff   = parseFloat(r.c[7]?.v);     // H
-      const lat   = parseFloat(r.c[9]?.v);     // J
-      const lng   = parseFloat(r.c[10]?.v);    // K
+      const name  = r.c[2]?.v;           // C
+      const total = r.c[3]?.v;           // D
+      const used  = r.c[4]?.v;           // E
+      const free  = r.c[5]?.v;           // F
 
-      if (isNaN(lat) || isNaN(lng)) return;
+      // H đang là Percentage (0.5 = 50%)
+      const effRaw = parseFloat(r.c[7]?.v);
+      const effPct = effRaw * 100;
 
-      const color = getColor(eff);
+      const lat = parseFloat(r.c[9]?.v); // J
+      const lng = parseFloat(r.c[10]?.v);// K
+
+      if (isNaN(lat) || isNaN(lng) || isNaN(effRaw)) return;
+
+      const color = getColor(effPct);
 
       L.circle([lat, lng], {
         radius: 300,
@@ -144,20 +144,15 @@ fetch(sheetURL)
         Dung lượng port: ${total}<br>
         Đã dùng: ${used}<br>
         Còn lại: ${free}<br>
-        Hiệu suất: ${eff}%
+        Hiệu suất: ${effPct.toFixed(1)}%
       `);
 
-      // đưa điểm vào bounds
       bounds.extend([lat, lng]);
     });
 
-    // =====================
-    // Auto zoom về vùng có vòng tròn
-    // =====================
+    // Auto zoom
     if (bounds.isValid()) {
-      map.fitBounds(bounds, {
-        padding: [40, 40]
-      });
+      map.fitBounds(bounds, { padding: [40, 40] });
     }
   })
   .catch(err => {
