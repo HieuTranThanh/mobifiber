@@ -288,7 +288,55 @@ function searchLocation() {
     return;
   }
 
-  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}`)
+suggestTimer = setTimeout(() => {
+  // 1️⃣ Lấy vùng map đang xem
+  const bounds = map.getBounds();
+
+  // 2️⃣ Tạo viewbox cho Nominatim
+  const viewbox = [
+    bounds.getWest(),
+    bounds.getSouth(),
+    bounds.getEast(),
+    bounds.getNorth()
+  ].join(",");
+
+  // 3️⃣ Gọi API Nominatim với viewbox
+  const url =
+    `https://nominatim.openstreetmap.org/search` +
+    `?format=json` +
+    `&limit=5` +
+    `&bounded=1` +          // ❗ CHỐT: chỉ tìm trong vùng này
+    `&viewbox=${viewbox}` +
+    `&q=${encodeURIComponent(q)}`;
+
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      suggestBox.innerHTML = "";
+
+      if (!data.length) {
+        suggestBox.style.display = "none";
+        return;
+      }
+
+      data.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "suggest-item";
+        div.textContent = item.display_name;
+
+        div.onclick = () => {
+          input.value = item.display_name;
+          suggestBox.style.display = "none";
+          handleCustomer(+item.lat, +item.lon);
+        };
+
+        suggestBox.appendChild(div);
+      });
+
+      suggestBox.style.display = "block";
+    });
+}, 300);
+  
     .then(r => r.json())
     .then(r => r[0] && handleCustomer(+r[0].lat, +r[0].lon));
 }
@@ -416,5 +464,6 @@ document.addEventListener("click", e => {
 
 </body>
 </html>
+
 
 
