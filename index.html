@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8" />
-<title>Bản đồ hiệu suất FTTH GPON</title>
+<title>Bản đồ hiệu suất FTTH – GPON</title>
 
 <!-- Leaflet -->
 <link
@@ -15,240 +15,264 @@
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 
 <!-- SheetJS -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
 <style>
-  body { margin: 0; font-family: Arial, sans-serif; }
-  #map { height: 100vh; }
+body { margin:0; font-family: Arial, sans-serif; }
+#map { height: 100vh; }
 
-  .panel {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 1000;
-    background: white;
-    padding: 10px;
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.25);
-    width: 320px;
-  }
+.control-box {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: white;
+  padding: 10px;
+  z-index: 1000;
+  border-radius: 6px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.3);
+  font-size: 13px;
+}
 
-  .panel input, .panel select, .panel button {
-    width: 100%;
-    margin-top: 5px;
-    padding: 6px;
-  }
+.control-box input, .control-box select, .control-box button {
+  width: 100%;
+  margin-top: 5px;
+}
 
-  .legend {
-    margin-top: 10px;
-    font-size: 13px;
-  }
+.legend {
+  margin-top: 10px;
+}
 
-  .legend div {
-    display: flex;
-    align-items: center;
-    margin-bottom: 4px;
-  }
+.legend div {
+  display: flex;
+  align-items: center;
+  margin-bottom: 3px;
+}
 
-  .color-box {
-    width: 16px;
-    height: 16px;
-    margin-right: 6px;
-  }
-
-  .best {
-    font-weight: bold;
-    color: #d32f2f;
-  }
+.legend span {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  display: inline-block;
+}
 </style>
 </head>
 
 <body>
 
-<div class="panel">
-  <b>Tìm khách hàng</b>
-  <input id="searchInput" placeholder="Địa chỉ hoặc lat,long" />
-  <button onclick="searchLocation()">Tìm & gợi ý tập điểm</button>
+<div id="map"></div>
+
+<div class="control-box">
+  <b>Tìm kiếm khách hàng</b>
+  <input id="searchInput" placeholder="Địa chỉ hoặc lat,lng" />
+  <button onclick="searchLocation()">Tìm</button>
+
+  <hr>
 
   <b>Lọc hiệu suất</b>
-  <select id="filterEfficiency" onchange="applyFilter()">
+  <select id="filterSelect" onchange="applyFilter()">
     <option value="all">Tất cả</option>
-    <option value="0-20">&lt; 20%</option>
-    <option value="20-50">20–50%</option>
-    <option value="50-80">50–80%</option>
-    <option value="80-100">≥ 80%</option>
+    <option value="lt20">&lt; 20%</option>
+    <option value="20_50">20 – 50%</option>
+    <option value="50_80">50 – 80%</option>
+    <option value="gte80">≥ 80%</option>
   </select>
 
-  <button onclick="exportUpgradeList()">
-    Danh sách tập điểm cần nâng cấp
-  </button>
+  <hr>
 
-  <div id="suggestion"></div>
+  <button onclick="exportUpgradeList()">Danh sách tập điểm cần nâng cấp</button>
 
   <div class="legend">
-    <b>Chú giải</b>
-    <div><span class="color-box" style="background:#2196f3"></span>&lt;20%</div>
-    <div><span class="color-box" style="background:#4caf50"></span>20–50%</div>
-    <div><span class="color-box" style="background:#ffeb3b"></span>50–80%</div>
-    <div><span class="color-box" style="background:#f44336"></span>80–100%</div>
-    <div><span class="color-box" style="background:#000"></span>≥100%</div>
+    <b>Legend</b>
+    <div><span style="background:#1e90ff"></span>&lt; 20%</div>
+    <div><span style="background:#2ecc71"></span>20 – 50%</div>
+    <div><span style="background:#f1c40f"></span>50 – 80%</div>
+    <div><span style="background:#e74c3c"></span>80 – &lt;100%</div>
+    <div><span style="background:#000"></span>≥ 100%</div>
   </div>
 </div>
 
-<div id="map"></div>
-
 <script>
-google.charts.load("current", { packages: ["corechart"] });
+google.charts.load('current', { packages:['corechart'] });
 
 const SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq/gviz/tq?sheet=Danh%20sách%20tập%20điểm%20S2";
+  'https://docs.google.com/spreadsheets/d/1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq/gviz/tq?sheet=Danh%20sách%20tập%20điểm%20S2';
 
-let map = L.map("map").setView([16, 108], 6);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+let map = L.map('map').setView([16, 108], 6);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution:'© OpenStreetMap'
+}).addTo(map);
 
 let allPoints = [];
-let layerGroup = L.layerGroup().addTo(map);
-let highlightLayer = L.layerGroup().addTo(map);
+let circles = [];
+let customerMarker = null;
 
-function efficiencyColor(e) {
-  if (e >= 100) return "#000";
-  if (e >= 80) return "#f44336";
-  if (e >= 50) return "#ffeb3b";
-  if (e >= 20) return "#4caf50";
-  return "#2196f3";
+/* ================= VALIDATE COORD ================= */
+function isValidCoord(lat, lng) {
+  if (lat === null || lng === null) return false;
+  lat = Number(lat);
+  lng = Number(lng);
+  if (isNaN(lat) || isNaN(lng)) return false;
+  if (lat < -90 || lat > 90) return false;
+  if (lng < -180 || lng > 180) return false;
+  return true;
 }
+
+/* ================= COLOR ================= */
+function getColor(rate) {
+  if (rate >= 1) return '#000';
+  if (rate >= 0.8) return '#e74c3c';
+  if (rate >= 0.5) return '#f1c40f';
+  if (rate >= 0.2) return '#2ecc71';
+  return '#1e90ff';
+}
+
+/* ================= LOAD DATA ================= */
+google.charts.setOnLoadCallback(loadData);
 
 function loadData() {
   const query = new google.visualization.Query(SHEET_URL);
   query.send(res => {
-    const table = res.getDataTable();
-    for (let i = 0; i < table.getNumberOfRows(); i++) {
-      const lat = table.getValue(i, 9);
-      const lng = table.getValue(i, 10);
-      if (!lat || !lng) continue;
-
-      const eff = table.getValue(i, 7) * 100;
+    const data = res.getDataTable();
+    for (let i = 0; i < data.getNumberOfRows(); i++) {
+      const lat = data.getValue(i, 9);
+      const lng = data.getValue(i, 10);
+      if (!isValidCoord(lat, lng)) continue;
 
       allPoints.push({
-        name: table.getValue(i, 2),
-        max: table.getValue(i, 3),
-        used: table.getValue(i, 4),
-        free: table.getValue(i, 5),
-        eff,
-        lat,
-        lng
+        name: data.getValue(i, 2),
+        maxPort: data.getValue(i, 3),
+        used: data.getValue(i, 4),
+        free: data.getValue(i, 5),
+        rate: data.getValue(i, 7),
+        lat: Number(lat),
+        lng: Number(lng)
       });
     }
-    renderPoints(allPoints);
+    drawMap(allPoints);
   });
 }
 
-function renderPoints(points) {
-  layerGroup.clearLayers();
+/* ================= DRAW MAP ================= */
+function drawMap(points) {
+  circles.forEach(c => map.removeLayer(c));
+  circles = [];
+
   let bounds = [];
+
   points.forEach(p => {
     const c = L.circle([p.lat, p.lng], {
       radius: 300,
-      color: efficiencyColor(p.eff),
-      fillOpacity: 0.5
-    }).bindPopup(`
-      <b>${p.name}</b><br/>
-      Dung lượng: ${p.max}<br/>
-      Đã dùng: ${p.used}<br/>
-      Còn lại: ${p.free}<br/>
-      Hiệu suất: ${p.eff.toFixed(1)}%
+      color: getColor(p.rate),
+      fillColor: getColor(p.rate),
+      fillOpacity: 0.6,
+      weight: 1
+    }).addTo(map);
+
+    c.bindPopup(`
+      <b>${p.name}</b><br>
+      Dung lượng: ${p.maxPort}<br>
+      Đã dùng: ${p.used}<br>
+      Còn lại: ${p.free}<br>
+      Hiệu suất: ${(p.rate*100).toFixed(1)}%
     `);
-    c.addTo(layerGroup);
+
+    c.pointData = p;
+    circles.push(c);
     bounds.push([p.lat, p.lng]);
   });
+
   if (bounds.length) map.fitBounds(bounds);
 }
 
+/* ================= FILTER ================= */
 function applyFilter() {
-  const v = document.getElementById("filterEfficiency").value;
-  if (v === "all") return renderPoints(allPoints);
-
-  const [min, max] = v.split("-").map(Number);
-  const filtered = allPoints.filter(p =>
-    max ? p.eff >= min && p.eff < max : p.eff >= min
-  );
-  renderPoints(filtered);
+  const v = document.getElementById('filterSelect').value;
+  const filtered = allPoints.filter(p => {
+    if (v === 'all') return true;
+    if (v === 'lt20') return p.rate < 0.2;
+    if (v === '20_50') return p.rate >= 0.2 && p.rate < 0.5;
+    if (v === '50_80') return p.rate >= 0.5 && p.rate < 0.8;
+    if (v === 'gte80') return p.rate >= 0.8;
+  });
+  drawMap(filtered);
 }
 
-function haversine(lat1, lon1, lat2, lon2) {
+/* ================= HAVERSINE ================= */
+function distance(a, b) {
   const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat/2)**2 +
-    Math.cos(lat1*Math.PI/180) *
-    Math.cos(lat2*Math.PI/180) *
-    Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const lat1 = a.lat * Math.PI / 180;
+  const lat2 = b.lat * Math.PI / 180;
+
+  const x = Math.sin(dLat/2)**2 +
+            Math.sin(dLng/2)**2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1-x));
 }
 
+/* ================= SEARCH ================= */
 function searchLocation() {
-  highlightLayer.clearLayers();
-  document.getElementById("suggestion").innerHTML = "";
-
-  const q = document.getElementById("searchInput").value.trim();
+  const q = document.getElementById('searchInput').value.trim();
   if (!q) return;
 
-  if (q.includes(",")) {
-    const [lat, lng] = q.split(",").map(Number);
-    handleCustomer(lat, lng);
+  if (q.includes(',')) {
+    const [lat, lng] = q.split(',').map(Number);
+    zoomToCustomer({lat, lng});
   } else {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`)
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .then(d => {
-        if (d.length) handleCustomer(+d[0].lat, +d[0].lon);
+        if (!d.length) return;
+        zoomToCustomer({lat: Number(d[0].lat), lng: Number(d[0].lon)});
       });
   }
 }
 
-function handleCustomer(lat, lng) {
-  map.setView([lat, lng], 16);
-  L.marker([lat, lng]).addTo(highlightLayer)
-    .bindPopup("Vị trí khách hàng").openPopup();
+function zoomToCustomer(pos) {
+  if (customerMarker) map.removeLayer(customerMarker);
+  customerMarker = L.marker([pos.lat, pos.lng]).addTo(map);
+  map.setView([pos.lat, pos.lng], 16);
+  suggestPoints(pos);
+}
+
+/* ================= SUGGEST ================= */
+function suggestPoints(pos) {
+  circles.forEach(c => c.setStyle({weight:1}));
 
   const candidates = allPoints
     .filter(p => p.free > 0)
-    .map(p => ({
-      ...p,
-      dist: haversine(lat, lng, p.lat, p.lng)
-    }))
-    .sort((a,b) => a.dist - b.dist)
-    .slice(0, 3);
+    .map(p => ({...p, dist: distance(pos, p)}))
+    .sort((a,b) => a.dist - b.dist || a.rate - b.rate)
+    .slice(0,3);
 
-  let html = "<b>Gợi ý tập điểm</b><br/>";
-  candidates.forEach((p,i) => {
-    L.polyline([[lat,lng],[p.lat,p.lng]], { dashArray: "5,5" })
-      .addTo(highlightLayer);
-    html += `${i===0?"<span class='best'>":""}
-      ${p.name}: ${p.dist.toFixed(0)} m
-      ${i===0?"</span>":""}<br/>`;
+  candidates.forEach((p, i) => {
+    const c = circles.find(x => x.pointData === p);
+    if (c) {
+      c.setStyle({weight: i === 0 ? 4 : 2});
+      L.polyline([[pos.lat,pos.lng],[p.lat,p.lng]])
+        .addTo(map)
+        .bindTooltip(`${Math.round(p.dist)} m`);
+    }
   });
-  document.getElementById("suggestion").innerHTML = html;
 }
 
+/* ================= EXPORT ================= */
 function exportUpgradeList() {
   const rows = allPoints
-    .filter(p => p.eff >= 80)
+    .filter(p => p.rate >= 0.8)
     .map(p => ({
-      "Tên tập điểm": p.name,
-      "Latitude": p.lat,
-      "Longitude": p.lng,
-      "Hiệu suất (%)": p.eff.toFixed(1),
-      "Mức ưu tiên": p.eff >= 100 ? "Ưu tiên 1" : "Ưu tiên 2"
+      'Tên tập điểm': p.name,
+      Latitude: p.lat,
+      Longitude: p.lng,
+      'Hiệu suất (%)': (p.rate*100).toFixed(1),
+      'Mức ưu tiên': p.rate >= 1 ? 1 : 2
     }));
 
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Nâng cấp");
-  XLSX.writeFile(wb, "tap_diem_can_nang_cap.xlsx");
+  XLSX.utils.book_append_sheet(wb, ws, 'Upgrade');
+  XLSX.writeFile(wb, 'tap_diem_can_nang_cap.csv');
 }
-
-google.charts.setOnLoadCallback(loadData);
 </script>
 
 </body>
