@@ -161,6 +161,10 @@ let isInitialLoad = true;
 map = L.map('map', { zoomControl: false }).setView([10.8, 106.7], 11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
+map.on("moveend", () => {
+  suggestBox.style.display = "none";
+});
+
 /* ================= UTILS ================= */
 
 function validateLatLng(lat, lng) {
@@ -464,6 +468,7 @@ document.addEventListener("click", e => {
 
 </body>
 </html>
+
 
 
 
