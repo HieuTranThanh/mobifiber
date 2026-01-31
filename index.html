@@ -62,6 +62,20 @@
       50% { opacity: 0.3; }
       100% { opacity: 1; }
     }
+
+    .hieusuat {
+      position: fixed;
+      right: 10px;
+      bottom: 10px;
+      z-index: 1000;
+    
+      background: white;
+      padding: 8px 10px;
+      border-radius: 6px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      font-size: 13px;
+    }
+    
   </style>
 </head>
 <body>
@@ -85,7 +99,14 @@
     </select>
   </div>
 
-  <div class="legend">
+  <div style="margin-top:6px">
+    <button onclick="exportUpgradeList()" style="width:100%">
+      Xuất DS tập điểm cần nâng cấp
+    </button>
+  </div>
+</div>
+
+  <div class="legend hieusuat">
     <div class="legend-note">Hiệu suất sử dụng tập điểm</div>
     <div>🔵 &lt;20%</div>
     <div>🟢 20–50%</div>
@@ -93,13 +114,6 @@
     <div>🔴 80–&lt;100%</div>
     <div>⚫ ≥100%</div>
   </div>
-
-  <div style="margin-top:6px">
-    <button onclick="exportUpgradeList()" style="width:100%">
-      Xuất DS tập điểm cần nâng cấp
-    </button>
-  </div>
-</div>
 
 <div id="map"></div>
 
@@ -324,6 +338,7 @@ function exportUpgradeList() {
 
 </body>
 </html>
+
 
 
 
