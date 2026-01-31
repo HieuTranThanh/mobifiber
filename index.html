@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-<!-- Search -->
+<!-- Leaflet Control Geocoder (SEARCH) -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css">
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
@@ -48,16 +48,21 @@ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
 }).addTo(map);
 
 // =====================
-// Search địa chỉ / tọa độ
+// SEARCH địa chỉ / tọa độ KHÁCH HÀNG (ĐÃ FIX)
 // =====================
 L.Control.geocoder({
-  defaultMarkGeocode: true
+  position: "topleft",
+  placeholder: "Nhập địa chỉ hoặc tọa độ (lat,lng)",
+  defaultMarkGeocode: false
 })
 .on("markgeocode", function(e) {
   const c = e.geocode.center;
-  L.marker(c).addTo(map)
-    .bindPopup("📍 Vị trí tìm kiếm")
+
+  L.marker(c)
+    .addTo(map)
+    .bindPopup("📍 Vị trí khách hàng")
     .openPopup();
+
   map.setView(c, 16);
 })
 .addTo(map);
@@ -112,15 +117,15 @@ fetch(sheetURL)
     const rows = json.table.rows;
 
     rows.forEach(r => {
-      const name  = r.c[2]?.v;                 // C
-      const total = r.c[3]?.v;                 // D
-      const used  = r.c[4]?.v;                 // E
-      const free  = r.c[5]?.v;                 // F
-      const eff   = parseFloat(r.c[7]?.v);     // H
-      const lat   = parseFloat(r.c[9]?.v);     // J
-      const lng   = parseFloat(r.c[10]?.v);    // K
+      const name  = r.c[2]?.v;             // C
+      const total = r.c[3]?.v;             // D
+      const used  = r.c[4]?.v;             // E
+      const free  = r.c[5]?.v;             // F
+      const eff   = r.c[7]?.v * 100;       // H (Percentage → %)
+      const lat   = r.c[9]?.v;             // J
+      const lng   = r.c[10]?.v;            // K
 
-      if (isNaN(lat) || isNaN(lng)) return;
+      if (!lat || !lng) return;
 
       const color = getColor(eff);
 
@@ -136,7 +141,7 @@ fetch(sheetURL)
         Dung lượng port: ${total}<br>
         Đã dùng: ${used}<br>
         Còn lại: ${free}<br>
-        Hiệu suất: ${eff}%
+        Hiệu suất: ${eff.toFixed(1)}%
       `);
     });
   })
