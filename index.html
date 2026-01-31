@@ -4,14 +4,10 @@
   <meta charset="UTF-8" />
   <title>Bản đồ hiệu suất FTTH GPON</title>
 
-  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Google Visualization -->
   <script src="https://www.gstatic.com/charts/loader.js"></script>
-
-  <!-- SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
@@ -36,12 +32,13 @@
       margin-right: 6px;
     }
     button { margin-top: 6px; width: 100%; }
+
     .blink {
       animation: blink 1s infinite;
     }
     @keyframes blink {
       0% { opacity: 1; }
-      50% { opacity: 0.3; }
+      50% { opacity: 0.4; }
       100% { opacity: 1; }
     }
   </style>
@@ -99,10 +96,7 @@ let suggestionLayers = [];
 function validateCoord(lat, lng) {
   const la = Number(lat);
   const lo = Number(lng);
-  if (isNaN(la) || isNaN(lo)) return false;
-  if (la < -90 || la > 90) return false;
-  if (lo < -180 || lo > 180) return false;
-  return true;
+  return !(isNaN(la) || isNaN(lo) || la < -90 || la > 90 || lo < -180 || lo > 180);
 }
 
 function getColor(rate) {
@@ -176,14 +170,17 @@ function drawMap() {
       fillOpacity: 0.5
     }).addTo(map);
 
-    c.bindPopup(`
+    c.basePopup = `
       <b>${p.name}</b><br>
       Port tối đa: ${p.max}<br>
       Đã dùng: ${p.used}<br>
       Còn lại: ${p.free}<br>
       Hiệu suất: ${(p.rate * 100).toFixed(1)}%
-    `);
+    `;
 
+    c.bindPopup(c.basePopup);
+
+    p.circle = c;
     circles.push(c);
     bounds.push([p.lat, p.lng]);
   });
@@ -223,26 +220,31 @@ function handleCustomer(lat, lng) {
       ...p,
       dist: haversine(lat, lng, p.lat, p.lng)
     }))
-    .sort((a, b) =>
-      a.dist - b.dist || a.rate - b.rate
-    )
+    .sort((a, b) => a.dist - b.dist || a.rate - b.rate)
     .slice(0, 3);
 
   candidates.forEach((p, idx) => {
+    const isBest = idx === 0;
+
     const line = L.polyline(
       [[lat, lng], [p.lat, p.lng]],
       { color: 'green', dashArray: '5,5' }
     ).addTo(map);
 
-    const circle = L.circle([p.lat, p.lng], {
-      radius: 300,
-      color: 'green',
-      weight: idx === 0 ? 4 : 2,
-      className: 'blink'
-    }).addTo(map)
-      .bindTooltip(`${(p.dist).toFixed(0)} m`);
+    p.circle.setStyle({
+      weight: isBest ? 4 : 3
+    });
+    p.circle.getElement().classList.add('blink');
 
-    suggestionLayers.push(line, circle);
+    p.circle.bindPopup(
+      p.circle.basePopup +
+      `<hr>
+       Khoảng cách tới khách hàng: <b>${p.dist.toFixed(0)} m</b><br>
+       ${isBest ? '⭐ <b>TẬP ĐIỂM TỐT NHẤT</b>' : ''}
+      `
+    );
+
+    suggestionLayers.push(line);
   });
 }
 
