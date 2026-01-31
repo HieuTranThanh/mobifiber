@@ -171,7 +171,8 @@ let clickMarker = null;
 /* ================= MAP ================= */
 
 map = L.map('map', {zoomControl: false, doubleClickZoom: false}).setView([10.8, 106.7], 11);
-  
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
 map.bindTooltip(
   "🖱️ Double click để chọn vị trí",
   {
@@ -181,8 +182,6 @@ map.bindTooltip(
     opacity: 0.9
   }
 );
-  
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
   
 map.on("dblclick", function (e) {
   const lat = e.latlng.lat.toFixed(6);
@@ -456,6 +455,7 @@ document.addEventListener("click", e => {
 
 </body>
 </html>
+
 
 
 
