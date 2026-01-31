@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Bản đồ hiệu suất FTTH GPON</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Search -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css">
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+<style>
+html, body, #map {
+  height: 100%;
+  margin: 0;
+}
+
+.legend {
+  background: white;
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 18px;
+}
+.legend i {
+  width: 14px;
+  height: 14px;
+  float: left;
+  margin-right: 6px;
+  opacity: 0.8;
+}
+</style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script>
+// =====================
+// Khởi tạo map
+// =====================
+const map = L.map("map").setView([10.78, 106.68], 12);
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "&copy; OpenStreetMap"
+}).addTo(map);
+
+// =====================
+// Search địa chỉ / tọa độ
+// =====================
+L.Control.geocoder({
+  defaultMarkGeocode: true
+})
+.on("markgeocode", function(e) {
+  const c = e.geocode.center;
+  L.marker(c).addTo(map)
+    .bindPopup("📍 Vị trí tìm kiếm")
+    .openPopup();
+  map.setView(c, 16);
+})
+.addTo(map);
+
+// =====================
+// Hàm màu theo hiệu suất
+// =====================
+function getColor(eff) {
+  if (eff >= 100) return "black";
+  if (eff > 80) return "red";
+  if (eff > 50) return "orange";
+  return "green";
+}
+
+// =====================
+// Legend
+// =====================
+const legend = L.control({ position: "bottomright" });
+legend.onAdd = function () {
+  const div = L.DomUtil.create("div", "legend");
+  div.innerHTML = `
+    <b>Hiệu suất sử dụng</b><br>
+    <i style="background:green"></i> &lt; 50%<br>
+    <i style="background:orange"></i> 50 – 80%<br>
+    <i style="background:red"></i> 80 – 100%<br>
+    <i style="background:black"></i> ≥ 100%
+  `;
+  return div;
+};
+legend.addTo(map);
+
+// =====================
+// Google Sheet (GVIZ)
+// =====================
+const SHEET_ID = "1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq";
+const SHEET_NAME = "Danh sách tập điểm S2";
+
+const sheetURL =
+  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?` +
+  `sheet=${encodeURIComponent(SHEET_NAME)}&tq=select *`;
+
+fetch(sheetURL)
+  .then(res => res.text())
+  .then(text => {
+    const json = JSON.parse(
+      text.substring(
+        text.indexOf("{"),
+        text.lastIndexOf("}") + 1
+      )
+    );
+
+    const rows = json.table.rows;
+
+    rows.forEach(r => {
+      const name  = r.c[2]?.v;                 // C
+      const total = r.c[3]?.v;                 // D
+      const used  = r.c[4]?.v;                 // E
+      const free  = r.c[5]?.v;                 // F
+      const eff   = parseFloat(r.c[7]?.v);     // H
+      const lat   = parseFloat(r.c[9]?.v);     // J
+      const lng   = parseFloat(r.c[10]?.v);    // K
+
+      if (isNaN(lat) || isNaN(lng)) return;
+
+      const color = getColor(eff);
+
+      L.circle([lat, lng], {
+        radius: 300,
+        color: color,
+        fillColor: color,
+        fillOpacity: 0.4
+      })
+      .addTo(map)
+      .bindPopup(`
+        <b>${name}</b><br>
+        Dung lượng port: ${total}<br>
+        Đã dùng: ${used}<br>
+        Còn lại: ${free}<br>
+        Hiệu suất: ${eff}%
+      `);
+    });
+  })
+  .catch(err => {
+    console.error(err);
+    alert("❌ Không tải được dữ liệu Google Sheet");
+  });
+</script>
+</body>
+</html>
