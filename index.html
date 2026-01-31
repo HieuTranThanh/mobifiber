@@ -16,14 +16,8 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
-    #map {
-      width: 100%;
-      height: 100%;
-    }
+    html, body { height: 100%; margin: 0; }
+    #map { width: 100%; height: 100%; }
 
     .control-box {
       position: absolute;
@@ -49,9 +43,7 @@
       margin-bottom: 6px;
     }
 
-    .search-row input {
-      flex: 1;
-    }
+    .search-row input { flex: 1; }
 
     .legend {
       margin-top: 6px;
@@ -59,9 +51,7 @@
       padding-top: 6px;
     }
 
-    .legend div {
-      margin-bottom: 4px;
-    }
+    .legend div { margin-bottom: 4px; }
 
     .blink {
       animation: blink 1s infinite;
@@ -76,19 +66,14 @@
 </head>
 <body>
 
-<!-- ================= CONTROL PANEL ================= -->
 <div class="control-box">
-
-  <!-- ✅ PANEL TITLE (NEW) -->
   <div class="panel-title">Nhập vị trí của khách hàng</div>
 
-  <!-- ✅ SEARCH (KHÔI PHỤC BỐ CỤC BAN ĐẦU) -->
   <div class="search-row">
     <input id="searchInput" placeholder="Địa chỉ hoặc lat,lng">
     <button onclick="searchLocation()">Tìm</button>
   </div>
 
-  <!-- FILTER -->
   <div>
     <select id="filterSelect" onchange="applyFilter()" style="width:100%">
       <option value="all">Tất cả</option>
@@ -99,7 +84,6 @@
     </select>
   </div>
 
-  <!-- ✅ LEGEND (TRỞ VỀ VỊ TRÍ ĐẸP NHƯ BAN ĐẦU) -->
   <div class="legend">
     <div>🔵 &lt;20%</div>
     <div>🟢 20–50%</div>
@@ -108,20 +92,17 @@
     <div>⚫ ≥100%</div>
   </div>
 
-  <!-- EXPORT -->
   <div style="margin-top:6px">
     <button onclick="exportUpgradeList()" style="width:100%">
       Danh sách tập điểm cần nâng cấp
     </button>
   </div>
-
 </div>
 
 <div id="map"></div>
 
 <script>
-/* ======= PHẦN JS GIỮ NGUYÊN 100% NHƯ BẢN TRƯỚC ======= */
-/* (Không thay đổi bất kỳ dòng logic nào) */
+/* ================= GLOBAL ================= */
 
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq';
 const SHEET_NAME = 'Danh sách tập điểm S2';
@@ -132,11 +113,12 @@ let customerMarker = null;
 let suggestionLayers = [];
 let isInitialLoad = true;
 
-map = L.map('map').setView([10.8, 106.7], 11);
+/* ================= MAP ================= */
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+map = L.map('map').setView([10.8, 106.7], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+/* ================= UTILS ================= */
 
 function validateLatLng(lat, lng) {
   return lat !== null && lng !== null && !isNaN(lat) && !isNaN(lng)
@@ -162,6 +144,8 @@ function haversine(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/* ================= LOAD DATA ================= */
+
 google.charts.load('current', { packages: ['corechart'] });
 google.charts.setOnLoadCallback(loadData);
 
@@ -169,6 +153,7 @@ function loadData() {
   const query = new google.visualization.Query(
     `${SHEET_URL}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`
   );
+
   query.send(res => {
     const data = res.getDataTable();
     for (let i = 0; i < data.getNumberOfRows(); i++) {
@@ -177,6 +162,7 @@ function loadData() {
       if (!validateLatLng(lat, lng)) continue;
 
       const eff = Number(data.getValue(i, 7));
+
       const circle = L.circle([lat, lng], {
         radius: 300,
         color: getColor(eff),
@@ -206,17 +192,22 @@ function loadData() {
   });
 }
 
+/* ================= RENDER ================= */
+
 function renderPoints() {
   const bounds = [];
   allPoints.forEach(p => {
     p.circle.addTo(map);
     bounds.push([p.lat, p.lng]);
   });
+
   if (isInitialLoad && bounds.length) {
     map.fitBounds(bounds, { padding: [40, 40] });
     isInitialLoad = false;
   }
 }
+
+/* ================= FILTER ================= */
 
 function applyFilter() {
   const v = filterSelect.value;
@@ -230,49 +221,86 @@ function applyFilter() {
   });
 }
 
+/* ================= SEARCH ================= */
+
 function searchLocation() {
   const val = searchInput.value.trim();
   if (!val) return;
+
   const p = val.split(',');
   if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1])) {
     handleCustomer(+p[0], +p[1]);
     return;
   }
+
   fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}`)
     .then(r => r.json())
     .then(r => r[0] && handleCustomer(+r[0].lat, +r[0].lon));
 }
+
+/* ================= CUSTOMER & SUGGEST ================= */
 
 function handleCustomer(lat, lng) {
   if (customerMarker) map.removeLayer(customerMarker);
   suggestionLayers.forEach(l => map.removeLayer(l));
   suggestionLayers = [];
 
+  allPoints.forEach(p => {
+    p.circle.setStyle({ weight: 2 });
+    const el = p.circle.getElement();
+    if (el) el.classList.remove('blink');
+  });
+
   customerMarker = L.marker([lat, lng]).addTo(map);
   map.setView([lat, lng], 15);
 
-  allPoints
+  const candidates = allPoints
     .filter(p => p.freePort > 0)
-    .map(p => ({ ...p, d: haversine(lat, lng, p.lat, p.lng) }))
-    .sort((a, b) => a.d - b.d || a.eff - b.eff)
-    .slice(0, 3)
-    .forEach((p, i) => {
-      p.circle.getElement().classList.add('blink');
-      p.circle.setStyle({ weight: 4 });
-      const line = L.polyline([[lat, lng], [p.lat, p.lng]],
-        { color: 'green', dashArray: '5,5' }).addTo(map);
-      line.bindTooltip(`${Math.round(p.d)} m`);
-      suggestionLayers.push(line);
-    });
+    .map(p => ({ ...p, dist: haversine(lat, lng, p.lat, p.lng) }))
+    .sort((a, b) => a.dist - b.dist || a.eff - b.eff)
+    .slice(0, 3);
+
+  candidates.forEach((p, i) => {
+    const el = p.circle.getElement();
+    if (el) el.classList.add('blink');
+
+    p.circle.setStyle({ weight: 4 });
+
+    const line = L.polyline(
+      [[lat, lng], [p.lat, p.lng]],
+      { color: 'green', dashArray: '5,5' }
+    ).addTo(map);
+
+    line.bindTooltip(`${Math.round(p.dist)} m`, { permanent: true, direction: 'center' });
+
+    p.circle.bindPopup(`
+      <b>${p.name}</b><br>
+      Dung lượng: ${p.maxPort}<br>
+      Đã dùng: ${p.usedPort}<br>
+      Còn lại: ${p.freePort}<br>
+      Hiệu suất: ${(p.eff * 100).toFixed(1)}%<br>
+      <b>Khoảng cách:</b> ${Math.round(p.dist)} m<br>
+      ${i === 0 ? '<b style="color:green">⭐ TẬP ĐIỂM TỐT NHẤT</b>' : ''}
+    `);
+
+    suggestionLayers.push(line);
+  });
 }
+
+/* ================= EXPORT ================= */
 
 function exportUpgradeList() {
   const rows = [['Tên', 'Lat', 'Lng', 'Hiệu suất (%)', 'Ưu tiên']];
   allPoints.forEach(p => {
     if (p.eff >= 0.8) {
-      rows.push([p.name, p.lat, p.lng, (p.eff*100).toFixed(1), p.eff >= 1 ? 'Ưu tiên 1' : 'Ưu tiên 2']);
+      rows.push([
+        p.name, p.lat, p.lng,
+        (p.eff * 100).toFixed(1),
+        p.eff >= 1 ? 'Ưu tiên 1' : 'Ưu tiên 2'
+      ]);
     }
   });
+
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Upgrade');
   XLSX.writeFile(wb, 'tap_diem_can_nang_cap.xlsx');
