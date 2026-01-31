@@ -289,10 +289,11 @@ function searchLocation() {
   }
 
 suggestTimer = setTimeout(() => {
-  // 1️⃣ Lấy vùng map đang xem
+  const q = input.value.trim();
+  if (q.length < 3) return;
+
   const bounds = map.getBounds();
 
-  // 2️⃣ Tạo viewbox cho Nominatim
   const viewbox = [
     bounds.getWest(),
     bounds.getSouth(),
@@ -300,12 +301,11 @@ suggestTimer = setTimeout(() => {
     bounds.getNorth()
   ].join(",");
 
-  // 3️⃣ Gọi API Nominatim với viewbox
   const url =
     `https://nominatim.openstreetmap.org/search` +
     `?format=json` +
     `&limit=5` +
-    `&bounded=1` +          // ❗ CHỐT: chỉ tìm trong vùng này
+    `&bounded=1` +
     `&viewbox=${viewbox}` +
     `&q=${encodeURIComponent(q)}`;
 
@@ -464,6 +464,7 @@ document.addEventListener("click", e => {
 
 </body>
 </html>
+
 
 
 
