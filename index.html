@@ -174,8 +174,7 @@ function validateLatLng(lat, lng) {
   lng = Number(lng);
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-
-  // ✅ BỔ SUNG DÒNG NÀY – CHỐT HẠ
+  
   if (lat === 0 && lng === 0) return false;
 
   return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
@@ -417,4 +416,5 @@ document.addEventListener("click", e => {
 
 </body>
 </html>
+
 
