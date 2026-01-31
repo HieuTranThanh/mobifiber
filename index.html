@@ -11,7 +11,7 @@
   />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Leaflet Control Geocoder -->
+  <!-- Leaflet Control Geocoder (SEARCH) -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"
@@ -46,26 +46,30 @@
 <div id="map"></div>
 
 <script>
-/* ================== MAP INIT ================== */
+/* ================== INIT MAP ================== */
 const map = L.map("map").setView([10.762622, 106.660172], 13);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   attribution: "&copy; OpenStreetMap contributors"
 }).addTo(map);
 
-/* ================== SEARCH ================== */
+/* ================== SEARCH BOX ================== */
 L.Control.geocoder({
-  defaultMarkGeocode: true
+  position: "topleft",
+  placeholder: "Nhập địa chỉ hoặc tọa độ (lat,lng)",
+  defaultMarkGeocode: false
 })
-  .on("markgeocode", function (e) {
-    const center = e.geocode.center;
-    L.marker(center)
-      .addTo(map)
-      .bindPopup("📍 Vị trí khách hàng")
-      .openPopup();
-    map.setView(center, 15);
-  })
-  .addTo(map);
+.on("markgeocode", function(e) {
+  const center = e.geocode.center;
+
+  L.marker(center)
+    .addTo(map)
+    .bindPopup("📍 Vị trí khách hàng")
+    .openPopup();
+
+  map.setView(center, 16);
+})
+.addTo(map);
 
 /* ================== COLOR LOGIC ================== */
 function getColor(eff) {
@@ -101,7 +105,7 @@ fetch(sheetUrl)
       const usedPort = row.c[4]?.v;
       const freePort = row.c[5]?.v;
 
-      // Percentage → 0–1 → %
+      // Percentage (0–1) → %
       const efficiency = row.c[7]?.v * 100;
 
       const lat = row.c[9]?.v;
@@ -111,14 +115,14 @@ fetch(sheetUrl)
 
       const color = getColor(efficiency);
 
-      const circle = L.circle([lat, lng], {
+      L.circle([lat, lng], {
         radius: 300,
         color: color,
         fillColor: color,
         fillOpacity: 0.4
-      }).addTo(map);
-
-      circle.bindPopup(`
+      })
+      .addTo(map)
+      .bindPopup(`
         <b>${name}</b><br/>
         Tổng port: ${totalPort}<br/>
         Đã dùng: ${usedPort}<br/>
