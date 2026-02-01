@@ -5,20 +5,34 @@
   <title>Vùng phủ GPON MobiFiber</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet -->
+  <!-- =========================
+       THƯ VIỆN BẢN ĐỒ LEAFLET
+       ========================= -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Google Visualization -->
+  <!-- =========================
+       GOOGLE VISUALIZATION
+       Dùng để đọc dữ liệu Google Sheet
+       ========================= -->
   <script src="https://www.gstatic.com/charts/loader.js"></script>
 
-  <!-- SheetJS -->
+  <!-- =========================
+       SHEETJS
+       Dùng export Excel cho kỹ thuật
+       ========================= -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
   <style>
+    /* =========================
+       STYLE CƠ BẢN CHO MAP
+       ========================= */
     html, body { height: 100%; margin: 0; }
     #map { width: 100%; height: 100%; }
 
+    /* =========================
+       KHUNG ĐIỀU KHIỂN (SEARCH + FILTER)
+       ========================= */
     .control-box {
       position: absolute;
       top: 10px;
@@ -37,6 +51,7 @@
       margin-bottom: 6px;
     }
 
+    /* Hàng nhập tìm kiếm */
     .search-row {
       display: flex;
       gap: 4px;
@@ -45,6 +60,9 @@
 
     .search-row input { flex: 1; }
 
+    /* =========================
+       LEGEND HIỆU SUẤT
+       ========================= */
     .legend {
       margin-top: 6px;
       border-top: 1px solid #eee;
@@ -53,6 +71,10 @@
 
     .legend div { margin-bottom: 4px; }
 
+    /* =========================
+       HIỆU ỨNG NHẤP NHÁY
+       Dùng highlight tập điểm gợi ý
+       ========================= */
     .blink {
       animation: blink 1s infinite;
     }
@@ -63,12 +85,14 @@
       100% { opacity: 1; }
     }
 
+    /* =========================
+       KHUNG CHÚ GIẢI HIỆU SUẤT (GÓC PHẢI)
+       ========================= */
     .hieusuat {
       position: fixed;
       right: 10px;
       bottom: 10px;
       z-index: 1000;
-    
       background: white;
       padding: 8px 10px;
       border-radius: 6px;
@@ -81,6 +105,9 @@
       width: 90px;
     }
 
+    /* =========================
+       GỢI Ý ĐỊA CHỈ (AUTOCOMPLETE)
+       ========================= */
     .suggest-box {
       position: absolute;
       top: 34px;
@@ -105,19 +132,19 @@
       background: #f0f0f0;
     }
 
-    /* ===== Nút định vị tôi ===== */
+    /* =========================
+       NÚT ĐỊNH VỊ NGƯỜI DÙNG
+       ========================= */
     .locate-btn {
       position: fixed;
       right: 10px;
       top: 10px;         
       z-index: 1001;
-    
       background: white;
       border: none;
       border-radius: 50%;
       width: 42px;
       height: 42px;
-    
       font-size: 20px;
       cursor: pointer;
       box-shadow: 0 0 6px rgba(0,0,0,0.3);
@@ -127,7 +154,9 @@
       background: #f0f0f0;
     }
 
-      /* ===== Thu gọn control box ===== */
+    /* =========================
+       THU GỌN / MỞ RỘNG CONTROL BOX
+       ========================= */
     .control-box.collapsed {
       height: 42px;
       overflow: hidden;
@@ -141,27 +170,31 @@
     .control-box.collapsed > div:not(.panel-title) {
       display: none;
     }
-    
   </style>
 </head>
+
 <body>
 
+<!-- =========================
+     KHUNG ĐIỀU KHIỂN CHÍNH
+     ========================= -->
 <div class="control-box" id="controlBox">
   <div class="panel-title">
     Tìm tập điểm xung quanh khách hàng
-    <span id="arrow" onclick="toggleControl()" style="float:right; cursor:pointer">
-      ▲
-    </span>
+    <!-- Nút thu gọn / mở rộng -->
+    <span id="arrow" onclick="toggleControl()" style="float:right; cursor:pointer">▲</span>
   </div>
 
-<div class="search-row" style="position:relative">
-  <input id="searchInput" placeholder="dbl-click map/nhập tọa độ, địa chỉ">
-  <button onclick="searchLocation()">Tìm</button>
+  <!-- Ô nhập tìm kiếm -->
+  <div class="search-row" style="position:relative">
+    <input id="searchInput" placeholder="dbl-click map/nhập tọa độ, địa chỉ">
+    <button onclick="searchLocation()">Tìm</button>
 
-  <!-- GỢI Ý -->
-  <div id="suggestBox" class="suggest-box"></div>
-</div>
+    <!-- Danh sách gợi ý địa chỉ -->
+    <div id="suggestBox" class="suggest-box"></div>
+  </div>
 
+  <!-- Filter theo hiệu suất -->
   <div>
     <div><b>Filter hiệu suất sử dụng tập điểm</b></div>
     <select id="filterSelect" onchange="applyFilter()" style="width:100%">
@@ -173,82 +206,113 @@
     </select>
   </div>
 
+  <!-- Export danh sách cần nâng cấp -->
   <div style="margin-top:6px">
     <button onclick="exportUpgradeList()" style="width:100%">
       Export DS tập điểm cần nâng cấp
     </button>
   </div>
   
+  <!-- Export toàn bộ tập điểm ra KML -->
   <div style="margin-top:6px">
-  <button onclick="exportAllCirclesToKML()" style="width:100%">
-    Export toàn bộ tập điểm (*.KML)
-  </button>
-</div>
-  
-</div>
-
-  <div class="legend hieusuat">
-    <div class="legend-note">Hiệu suất sử dụng tập điểm</div>
-    <div>
-      <span class="col">🔵 &lt;20%</span>
-      <span class="col">🟢 20–50%</span>
-    </div>
-    <div>
-      <span class="col">🟡 50–80%</span>
-      <span class="col">🔴 80–&lt;100%</span>
-    </div>
-    <div>
-      <span class="col">⚫ ≥100%</span>
-    </div>
+    <button onclick="exportAllCirclesToKML()" style="width:100%">
+      Export toàn bộ tập điểm (*.KML)
+    </button>
   </div>
+</div>
 
+<!-- =========================
+     CHÚ GIẢI MÀU HIỆU SUẤT
+     ========================= -->
+<div class="legend hieusuat">
+  <div class="legend-note">Hiệu suất sử dụng tập điểm</div>
+  <div>
+    <span class="col">🔵 &lt;20%</span>
+    <span class="col">🟢 20–50%</span>
+  </div>
+  <div>
+    <span class="col">🟡 50–80%</span>
+    <span class="col">🔴 80–&lt;100%</span>
+  </div>
+  <div>
+    <span class="col">⚫ ≥100%</span>
+  </div>
+</div>
+
+<!-- MAP -->
 <div id="map"></div>
-<button class="locate-btn" onclick="locateMe()" title="Định vị tôi">
-  📍
-</button>
+
+<!-- Nút định vị -->
+<button class="locate-btn" onclick="locateMe()" title="Định vị tôi">📍</button>
 
 <script>
-/* ================= GLOBAL ================= */
+/* =====================================================
+   BIẾN TOÀN CỤC & CẤU HÌNH
+   ===================================================== */
 
+// Link Google Sheet và tên sheet dữ liệu
 const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1avvicsQgJIm_D66EsPxFE7aUBCfuMdBq';
 const SHEET_NAME = 'Danh sách tập điểm S2';
 
+// Đối tượng map Leaflet
 let map;
+
+// Danh sách toàn bộ tập điểm hợp lệ
 let allPoints = [];
+
+// Marker vị trí khách hàng
 let customerMarker = null;
+
+// Các layer gợi ý (line, highlight)
 let suggestionLayers = [];
+
+// Cờ xác định lần load đầu tiên (fitBounds)
 let isInitialLoad = true;
+
+// Marker khi dbl-click map
 let clickMarker = null;
 
-/* ================= MAP ================= */
+/* =====================================================
+   KHỞI TẠO MAP
+   ===================================================== */
 
-map = L.map('map', {zoomControl: false, doubleClickZoom: false}).setView([10.8, 106.7], 11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-  
+map = L.map('map', {
+  zoomControl: false,
+  doubleClickZoom: false
+}).setView([10.8, 106.7], 11);
+
+// Tile OpenStreetMap
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
+
+/* Double click map để chọn vị trí khách hàng */
 map.on("dblclick", function (e) {
   const lat = e.latlng.lat.toFixed(6);
   const lng = e.latlng.lng.toFixed(6);
 
-  // Xóa marker cũ nếu có
+  // Xóa marker cũ
   if (clickMarker) map.removeLayer(clickMarker);
 
-  // Ghim marker mới
+  // Tạo marker mới
   clickMarker = L.marker([lat, lng]).addTo(map);
 
   // Điền tọa độ vào ô tìm kiếm
   document.getElementById("searchInput").value = `${lat}, ${lng}`;
 
-  // Gọi xử lý khách hàng
+  // Xử lý logic tìm tập điểm
   handleCustomer(+lat, +lng);
   collapseControlBox();
 });
 
-/* ================= UTILS ================= */
+/* =====================================================
+   HÀM TIỆN ÍCH (UTILS)
+   ===================================================== */
 
+/* Kiểm tra tọa độ hợp lệ */
 function validateLatLng(lat, lng) {
   if (lat === null || lat === undefined) return false;
   if (lng === null || lng === undefined) return false;
-
   if (String(lat).trim() === "") return false;
   if (String(lng).trim() === "") return false;
 
@@ -256,12 +320,12 @@ function validateLatLng(lat, lng) {
   lng = Number(lng);
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
-
   if (lat === 0 && lng === 0) return false;
 
   return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
 }
 
+/* Xác định màu theo hiệu suất */
 function getColor(eff) {
   if (eff < 0.2) return 'blue';
   if (eff < 0.5) return 'green';
@@ -270,6 +334,7 @@ function getColor(eff) {
   return 'black';
 }
 
+/* Quy đổi màu sang format KML */
 function colorToKML(color) {
   const map = {
     blue:  "7dff0000",
@@ -281,6 +346,7 @@ function colorToKML(color) {
   return map[color] || "7dffffff";
 }
 
+/* Tính khoảng cách Haversine (mét) */
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 6371000;
   const toRad = d => d * Math.PI / 180;
@@ -292,13 +358,13 @@ function haversine(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/* Chuyển circle Leaflet thành polygon cho KML */
 function circleToPolygon(lat, lng, radiusMeters, points = 60) {
   const coords = [];
   const earthRadius = 6378137;
 
   for (let i = 0; i <= points; i++) {
     const angle = (i / points) * 2 * Math.PI;
-
     const dx = radiusMeters * Math.cos(angle);
     const dy = radiusMeters * Math.sin(angle);
 
@@ -314,11 +380,14 @@ function circleToPolygon(lat, lng, radiusMeters, points = 60) {
   return coords.join(" ");
 }
 
-/* ================= LOAD DATA ================= */
+/* =====================================================
+   LOAD DỮ LIỆU GOOGLE SHEET
+   ===================================================== */
 
 google.charts.load('current', { packages: ['corechart'] });
 google.charts.setOnLoadCallback(loadData);
 
+/* Đọc dữ liệu từ Google Sheet */
 function loadData() {
   const query = new google.visualization.Query(
     `${SHEET_URL}/gviz/tq?sheet=${encodeURIComponent(SHEET_NAME)}`
@@ -326,6 +395,8 @@ function loadData() {
 
   query.send(res => {
     const data = res.getDataTable();
+
+    // Duyệt từng dòng dữ liệu
     for (let i = 0; i < data.getNumberOfRows(); i++) {
       const lat = Number(data.getValue(i, 9));
       const lng = Number(data.getValue(i, 10));
@@ -333,6 +404,7 @@ function loadData() {
 
       const eff = Number(data.getValue(i, 7));
 
+      // Vẽ vòng tròn tập điểm
       const circle = L.circle([lat, lng], {
         radius: 300,
         color: getColor(eff),
@@ -341,6 +413,7 @@ function loadData() {
         weight: 2
       });
 
+      // Popup thông tin tập điểm
       circle.bindPopup(`
         <b>${data.getValue(i, 2)}</b><br>
         Dung lượng (Port): ${data.getValue(i, 3)}<br>
@@ -349,6 +422,7 @@ function loadData() {
         Hiệu suất: ${(eff * 100).toFixed(1)}%
       `);
 
+      // Lưu thông tin tập điểm
       allPoints.push({
         name: data.getValue(i, 2),
         maxPort: data.getValue(i, 3),
@@ -358,73 +432,94 @@ function loadData() {
         circle
       });
     }
+
     renderPoints();
   });
 }
 
-/* ================= RENDER ================= */
+/* =====================================================
+   HIỂN THỊ TẬP ĐIỂM
+   ===================================================== */
 
 function renderPoints() {
   const bounds = [];
+
   allPoints.forEach(p => {
     p.circle.addTo(map);
     bounds.push([p.lat, p.lng]);
   });
 
+  // Zoom bao toàn bộ tập điểm ở lần load đầu
   if (isInitialLoad && bounds.length) {
     map.fitBounds(bounds, { padding: [40, 40] });
     isInitialLoad = false;
   }
 }
 
-/* ================= FILTER ================= */
+/* =====================================================
+   FILTER THEO HIỆU SUẤT
+   ===================================================== */
 
 function applyFilter() {
   const v = filterSelect.value;
+
   allPoints.forEach(p => {
     let show = true;
+
     if (v === 'lt20') show = p.eff < 0.2;
     else if (v === '20_50') show = p.eff >= 0.2 && p.eff < 0.5;
     else if (v === '50_80') show = p.eff >= 0.5 && p.eff < 0.8;
     else if (v === 'gte80') show = p.eff >= 0.8;
+
     show ? p.circle.addTo(map) : map.removeLayer(p.circle);
   });
 }
 
-/* ================= SEARCH ================= */
+/* =====================================================
+   TÌM KIẾM KHÁCH HÀNG
+   ===================================================== */
 
 function searchLocation() {
   const val = searchInput.value.trim();
   if (!val) return;
 
+  // Nhập tọa độ trực tiếp
   const p = val.split(',');
   if (p.length === 2 && !isNaN(p[0]) && !isNaN(p[1])) {
     handleCustomer(+p[0], +p[1]);
     return;
   }
 
+  // Tìm theo địa chỉ (Nominatim)
   fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}`)
     .then(r => r.json())
     .then(r => r[0] && handleCustomer(+r[0].lat, +r[0].lon));
+
   collapseControlBox();
 }
 
-/* ================= CUSTOMER & SUGGEST ================= */
+/* =====================================================
+   XỬ LÝ LOGIC KHÁCH HÀNG & GỢI Ý TẬP ĐIỂM
+   ===================================================== */
 
 function handleCustomer(lat, lng) {
+  // Xóa marker & layer cũ
   if (customerMarker) map.removeLayer(customerMarker);
   suggestionLayers.forEach(l => map.removeLayer(l));
   suggestionLayers = [];
 
+  // Reset style tập điểm
   allPoints.forEach(p => {
     p.circle.setStyle({ weight: 2 });
     const el = p.circle.getElement();
     if (el) el.classList.remove('blink');
   });
 
+  // Marker khách hàng
   customerMarker = L.marker([lat, lng]).addTo(map);
   map.setView([lat, lng], 15);
 
+  // Chọn 3 tập điểm gần nhất còn port trống
   const candidates = allPoints
     .filter(p => p.freePort > 0)
     .map(p => ({ ...p, dist: haversine(lat, lng, p.lat, p.lng) }))
@@ -437,13 +532,19 @@ function handleCustomer(lat, lng) {
 
     p.circle.setStyle({ weight: 4 });
 
+    // Vẽ đường nối khách hàng → tập điểm
     const line = L.polyline(
       [[lat, lng], [p.lat, p.lng]],
       { color: 'green', dashArray: '5,5' }
     ).addTo(map);
 
-    line.bindTooltip(`${Math.round(p.dist)} m`, { permanent: true, direction: 'center' });
+    // Hiển thị khoảng cách
+    line.bindTooltip(`${Math.round(p.dist)} m`, {
+      permanent: true,
+      direction: 'center'
+    });
 
+    // Popup chi tiết
     p.circle.bindPopup(`
       <b>${p.name}</b><br>
       Dung lượng: ${p.maxPort}<br>
@@ -458,14 +559,20 @@ function handleCustomer(lat, lng) {
   });
 }
 
-/* ================= EXPORT ================= */
+/* =====================================================
+   EXPORT DỮ LIỆU
+   ===================================================== */
 
+/* Export danh sách tập điểm cần nâng cấp ra Excel */
 function exportUpgradeList() {
   const rows = [['Tên', 'Lat', 'Long', 'Hiệu suất (%)', 'Ưu tiên']];
+
   allPoints.forEach(p => {
     if (p.eff >= 0.8) {
       rows.push([
-        p.name, p.lat, p.lng,
+        p.name,
+        p.lat,
+        p.lng,
         (p.eff * 100).toFixed(1),
         p.eff >= 1 ? 'Ưu tiên 1' : 'Ưu tiên 2'
       ]);
@@ -477,6 +584,7 @@ function exportUpgradeList() {
   XLSX.writeFile(wb, 'DS_tap_diem_can_nang_cap.xlsx');
 }
 
+/* Export toàn bộ tập điểm ra file KML */
 function exportAllCirclesToKML() {
   let placemarks = "";
 
@@ -532,6 +640,7 @@ function exportAllCirclesToKML() {
   downloadKML(kml, "Vung_phu_GPON_MobiFiber.kml");
 }
 
+/* Tải file KML */
 function downloadKML(content, filename) {
   const blob = new Blob([content], {
     type: "application/vnd.google-earth.kml+xml"
@@ -542,15 +651,18 @@ function downloadKML(content, filename) {
   a.href = url;
   a.download = filename;
   a.click();
-
   URL.revokeObjectURL(url);
 }
 
+/* =====================================================
+   AUTOCOMPLETE & ĐỊNH VỊ
+   ===================================================== */
+
 const input = document.getElementById("searchInput");
 const suggestBox = document.getElementById("suggestBox");
-
 let suggestTimer = null;
 
+/* Autocomplete địa chỉ */
 input.addEventListener("input", () => {
   const q = input.value.trim();
   if (q.length < 3) {
@@ -560,9 +672,7 @@ input.addEventListener("input", () => {
 
   clearTimeout(suggestTimer);
   suggestTimer = setTimeout(() => {
-    fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`
-    )
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`)
       .then(r => r.json())
       .then(data => {
         suggestBox.innerHTML = "";
@@ -587,16 +697,17 @@ input.addEventListener("input", () => {
 
         suggestBox.style.display = "block";
       });
-  }, 300); // debounce tránh spam API
+  }, 300);
 });
 
-// Ẩn gợi ý khi click ra ngoài
+/* Ẩn gợi ý khi click ngoài */
 document.addEventListener("click", e => {
   if (!e.target.closest(".search-row")) {
     suggestBox.style.display = "none";
   }
 });
 
+/* Định vị người dùng */
 let myLocationMarker = null;
 let myAccuracyCircle = null;
 
@@ -612,17 +723,14 @@ function locateMe() {
       const lng = pos.coords.longitude;
       const accuracy = pos.coords.accuracy;
 
-      // Xóa vị trí cũ
       if (myLocationMarker) map.removeLayer(myLocationMarker);
       if (myAccuracyCircle) map.removeLayer(myAccuracyCircle);
 
-      // Marker vị trí tôi
       myLocationMarker = L.marker([lat, lng])
         .addTo(map)
         .bindPopup("📍 Vị trí của tôi")
         .openPopup();
 
-      // Vòng tròn sai số
       myAccuracyCircle = L.circle([lat, lng], {
         radius: accuracy,
         color: "blue",
@@ -631,20 +739,17 @@ function locateMe() {
       }).addTo(map);
 
       map.setView([lat, lng], 15);
-
-      // Gọi logic xử lý khách hàng sẵn có
       handleCustomer(lat, lng);
       collapseControlBox();
     },
-    err => {
-      alert("Không lấy được vị trí: " + err.message);
-    },
-    {
-      enableHighAccuracy: true,
-      timeout: 10000
-    }
+    err => alert("Không lấy được vị trí: " + err.message),
+    { enableHighAccuracy: true, timeout: 10000 }
   );
 }
+
+/* =====================================================
+   THU GỌN / MỞ RỘNG PANEL
+   ===================================================== */
 
 function toggleControl() {
   const box = document.getElementById("controlBox");
@@ -654,7 +759,6 @@ function toggleControl() {
   arrow.textContent = box.classList.contains("collapsed") ? "▼" : "▲";
 }
 
-// Thu gọn tự động
 function collapseControlBox() {
   const box = document.getElementById("controlBox");
   const arrow = document.getElementById("arrow");
@@ -664,7 +768,6 @@ function collapseControlBox() {
     arrow.textContent = "▼";
   }
 }
-  
 </script>
 
 </body>
