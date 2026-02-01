@@ -555,7 +555,7 @@ function handleCustomer(lat, lng) {
       <a href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank">
         ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}
       </a><br>
-      <b>Dung lượng (Port):</b> ${p.maxPort}<br>
+      <b>Dung lượng:</b> ${p.maxPort} Port<br>
       <b>Đã dùng:</b> ${p.usedPort}<br>
       <b>Còn lại:</b> ${p.freePort}<br>
       <b>Hiệu suất:</b> ${(p.eff * 100).toFixed(1)}%<br>
@@ -780,6 +780,7 @@ function collapseControlBox() {
 
 </body>
 </html>
+
 
 
 
