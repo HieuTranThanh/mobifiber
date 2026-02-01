@@ -425,11 +425,8 @@ function loadData() {
       
         <b>Dẫn đường:</b>
         ${
-          hasCustomer
-            ? `<a href="https://www.google.com/maps/dir/?api=1
-                &origin=${customerMarker.getLatLng().lat},${customerMarker.getLatLng().lng}
-                &destination=${lat},${lng}"
-                target="_blank">
+          customerMarker
+            ? `<a href="https://www.google.com/maps/dir/?api=1&origin=${customerMarker.getLatLng().lat},${customerMarker.getLatLng().lng}&destination=${lat},${lng}" target="_blank">
                 🧭 Chỉ đường từ vị trí khách hàng
               </a>`
             : `<span style="color:#888">Chưa có vị trí khách hàng</span>`
@@ -574,10 +571,7 @@ function handleCustomer(lat, lng) {
       </a><br>
     
       <b>Dẫn đường:</b>
-      <a href="https://www.google.com/maps/dir/?api=1
-        &origin=${customerMarker.getLatLng().lat},${customerMarker.getLatLng().lng}
-        &destination=${p.lat},${p.lng}"
-        target="_blank">
+      <a href="https://www.google.com/maps/dir/?api=1&origin=${customerMarker.getLatLng().lat},${customerMarker.getLatLng().lng}&destination=${p.lat},${p.lng}" target="_blank">
         🧭 Chỉ đường từ vị trí khách hàng
       </a><br>
     
@@ -807,6 +801,7 @@ function collapseControlBox() {
 
 </body>
 </html>
+
 
 
 
