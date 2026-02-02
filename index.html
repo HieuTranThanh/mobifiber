@@ -439,8 +439,10 @@ function renderCustomerList(tapDiemName) {
   `;
 
   list.forEach(c => {
+    const isNormal = c.status === 'Hoạt động bình thường';
+  
     html += `
-      <tr>
+      <tr style="${isNormal ? '' : 'background:#ffe6e6; color:#b30000;'}">
         <td>${c.name || ''}</td>
         <td>${c.address || ''}</td>
         <td>${c.status || ''}</td>
@@ -970,3 +972,4 @@ function collapseControlBox() {
 </script>
 </body>
 </html>
+
