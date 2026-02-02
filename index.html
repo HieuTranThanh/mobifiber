@@ -268,7 +268,7 @@
     <span class="col">🟢 20–50%</span>
   </div>
   <div>
-    <span class="col">🟡 50–80%</span>
+    <span class="col">🟠 50–80%</span>
     <span class="col">🔴 80–&lt;100%</span>
   </div>
   <div>
@@ -370,7 +370,7 @@ function validateLatLng(lat, lng) {
 function getColor(eff) {
   if (eff < 0.2) return 'blue';
   if (eff < 0.5) return 'green';
-  if (eff < 0.8) return 'yellow';
+  if (eff < 0.8) return 'orange';
   if (eff < 1) return 'red';
   return 'black';
 }
@@ -380,7 +380,7 @@ function colorToKML(color) {
   const map = {
     blue:  "7dff0000",
     green: "7d00ff00",
-    yellow:"7d00ffff",
+    orange: "7d00a5ff",
     red:   "7d0000ff",
     black: "7d000000"
   };
@@ -972,4 +972,5 @@ function collapseControlBox() {
 </script>
 </body>
 </html>
+
 
