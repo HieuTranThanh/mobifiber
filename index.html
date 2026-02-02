@@ -433,6 +433,7 @@ function renderCustomerList(tapDiemName) {
       <table border="1" cellpadding="4" cellspacing="0" width="100%">
         <tr style="background:#f0f0f0">
           <th>Tên KH</th>
+          <th>SĐT</th>      
           <th>Địa chỉ</th>
           <th>Trạng thái</th>
         </tr>
@@ -442,6 +443,7 @@ function renderCustomerList(tapDiemName) {
     html += `
       <tr>
         <td>${c.name || ''}</td>
+        <td>${c.phone || ''}</td>
         <td>${c.address || ''}</td>
         <td>${c.status || ''}</td>
       </tr>
@@ -547,8 +549,9 @@ function loadCustomerData() {
 
     for (let i = 0; i < data.getNumberOfRows(); i++) {
       const tenKH   = data.getValue(i, 5);   // Cột F
+      const sdt     = data.getValue(i, 9);   // Cột J 
       const tapDiem = data.getValue(i, 13);  // Cột N
-      const diaChi  = data.getValue(i, 8);   // Cột I (có dấu , OK)
+      const diaChi  = data.getValue(i, 8);   // Cột I
       const status  = data.getValue(i, 15);  // Cột P
 
       if (!tapDiem) continue;
@@ -559,6 +562,7 @@ function loadCustomerData() {
 
       customerByTapDiem[tapDiem].push({
         name: tenKH,
+        phone: sdt,        
         address: diaChi,
         status
       });
@@ -970,4 +974,5 @@ function collapseControlBox() {
 </script>
 </body>
 </html>
+
 
