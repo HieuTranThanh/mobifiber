@@ -776,7 +776,7 @@ function exportAllCirclesToKML() {
   let placemarks = "";
 
   allPoints.forEach(p => {
-    const polygon = circleToPolygon(p.lat, p.lng, 300);
+    const polygon = circleToPolygon(p.lat, p.lng, 225);
     const color = colorToKML(getColor(p.eff));
 
     const description = `
@@ -972,5 +972,6 @@ function collapseControlBox() {
 </script>
 </body>
 </html>
+
 
 
