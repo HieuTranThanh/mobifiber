@@ -297,6 +297,10 @@ let map;
 // Danh sách toàn bộ tập điểm hợp lệ
 let allPoints = [];
 
+// Map lưu danh sách khách hàng theo tập điểm
+// key: tên tập điểm | value: mảng khách hàng
+let customerByTapDiem = {};
+
 // Marker vị trí khách hàng
 let customerMarker = null;
 
@@ -417,12 +421,52 @@ function circleToPolygon(lat, lng, radiusMeters, points = 60) {
   return coords.join(" ");
 }
 
+function renderCustomerList(tapDiemName) {
+  const list = customerByTapDiem[tapDiemName] || [];
+
+  if (!list.length) {
+    return `<i>Không có khách hàng trong tập điểm này</i>`;
+  }
+
+  let html = `
+    <div style="max-height:200px; overflow:auto; font-size:12px">
+      <table border="1" cellpadding="4" cellspacing="0" width="100%">
+        <tr style="background:#f0f0f0">
+          <th>Tên KH</th>
+          <th>Địa chỉ</th>
+          <th>Trạng thái</th>
+        </tr>
+  `;
+
+  list.forEach(c => {
+    html += `
+      <tr>
+        <td>${c.name || ''}</td>
+        <td>${c.address || ''}</td>
+        <td>${c.status || ''}</td>
+      </tr>
+    `;
+  });
+
+  html += `</table></div>`;
+  return html;
+}
+
+function showCustomer(tapDiemName) {
+  const el = document.getElementById(`customer-${tapDiemName}`);
+  if (!el) return;
+  el.innerHTML = renderCustomerList(tapDiemName);
+}
+
 /* =====================================================
    LOAD DỮ LIỆU GOOGLE SHEET
    ===================================================== */
 
 google.charts.load('current', { packages: ['corechart'] });
-google.charts.setOnLoadCallback(loadData);
+google.charts.setOnLoadCallback(() => {
+  loadData();
+  loadCustomerData();
+});
 
 /* Đọc dữ liệu từ Google Sheet */
 function loadData() {
@@ -470,6 +514,12 @@ function loadData() {
         <b>Đã dùng:</b> ${data.getValue(i, 4)}<br>
         <b>Còn lại:</b> ${data.getValue(i, 5)}<br>
         <b>Hiệu suất:</b> ${(eff * 100).toFixed(1)}%
+          <hr>
+        <a href="#" onclick="event.preventDefault(); showCustomer('${data.getValue(i, 2)}')">
+          📋 Xem danh sách khách hàng
+        </a>
+      
+        <div id="customer-${data.getValue(i, 2)}" style="margin-top:6px"></div>
       `);
 
       // Lưu thông tin tập điểm
@@ -484,6 +534,37 @@ function loadData() {
     }
 
     renderPoints();
+  });
+}
+
+function loadCustomerData() {
+  const query = new google.visualization.Query(
+    `${SHEET_URL}/gviz/tq?sheet=${encodeURIComponent('Danh sách khách hàng')}`
+  );
+
+  query.send(res => {
+    const data = res.getDataTable();
+
+    for (let i = 0; i < data.getNumberOfRows(); i++) {
+      const tenKH   = data.getValue(i, 5);   // Cột F
+      const tapDiem = data.getValue(i, 13);  // Cột N
+      const diaChi  = data.getValue(i, 8);   // Cột I (có dấu , OK)
+      const status  = data.getValue(i, 15);  // Cột P
+
+      if (!tapDiem) continue;
+
+      if (!customerByTapDiem[tapDiem]) {
+        customerByTapDiem[tapDiem] = [];
+      }
+
+      customerByTapDiem[tapDiem].push({
+        name: tenKH,
+        address: diaChi,
+        status
+      });
+    }
+
+    console.log("Đã load danh sách KH theo tập điểm", customerByTapDiem);
   });
 }
 
@@ -634,6 +715,12 @@ function handleCustomer(lat, lng) {
       <b>Còn lại:</b> ${p.freePort}<br>
       <b>Hiệu suất:</b> ${(p.eff * 100).toFixed(1)}%<br>
       <b>Khoảng cách:</b> ${Math.round(p.dist)} m<br>
+        <hr>
+      <a href="#" onclick="event.preventDefault(); showCustomer('${p.name}')">
+        📋 Xem danh sách khách hàng
+      </a>
+    
+      <div id="customer-${p.name}" style="margin-top:6px"></div>
     
       ${i === 0 ? '<b style="color:green">⭐ TẬP ĐIỂM TỐT NHẤT</b>' : ''}
     `);
@@ -883,3 +970,4 @@ function collapseControlBox() {
 </script>
 </body>
 </html>
+
