@@ -532,7 +532,6 @@ function loadData() {
         weight: 2
       });
 
-      const hasCustomer = customerMarker !== null;
       // Popup thông tin tập điểm FTTH
       const basePopup = `
         <b>${data.getValue(i, 2)}</b><br>
@@ -708,6 +707,7 @@ function handleCustomer(lat, lng) {
   // Reset style tập điểm
   allPoints.forEach(p => {
     p.circle.setStyle({ weight: 2 });
+    p.circle.setPopupContent(p.basePopup); // 👈 reset popup
     const el = p.circle.getElement();
     if (el) el.classList.remove('blink');
   });
@@ -1102,4 +1102,5 @@ function locateCustomerInTapDiem(customer) {
 </div>
 </body>
 </html>
+
 
