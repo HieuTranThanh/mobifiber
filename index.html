@@ -228,6 +228,12 @@
     <input id="searchInput" placeholder="dbl-click map/nhập tọa độ, địa chỉ">
     <button onclick="searchLocation()">Tìm</button>
 
+  <!-- Ô tìm kiếm KHÁCH HÀNG -->
+  <div class="search-row" style="position:relative">
+    <input id="customerSearchInput" placeholder="Tìm khách hàng (Tên - Địa chỉ)">
+    <div id="customerSuggestBox" class="suggest-box"></div>
+  </div>
+
     <!-- Danh sách gợi ý địa chỉ -->
     <div id="suggestBox" class="suggest-box"></div>
   </div>
@@ -320,6 +326,9 @@ let allPoints = [];
 // Map lưu danh sách khách hàng theo tập điểm
 // key: tên tập điểm | value: mảng khách hàng
 let customerByTapDiem = {};
+
+// Danh sách khách hàng phục vụ search
+let customerSearchList = [];
 
 // Marker vị trí khách hàng
 let customerMarker = null;
@@ -584,12 +593,25 @@ function loadCustomerData() {
         address: diaChi,
         status
       });
+      
+      customerSearchList.push({
+        name: tenKH,
+        address: diaChi,
+        tapDiem: tapDiem,
+        status: status
+      });
     }
 
     console.log("Đã load danh sách KH theo tập điểm", customerByTapDiem);
   });
 }
 
+function getVisibleTapDiemNames() {
+  return allPoints
+    .filter(p => map.hasLayer(p.circle))
+    .map(p => p.name);
+}
+  
 /* =====================================================
    HIỂN THỊ TẬP ĐIỂM
    ===================================================== */
@@ -867,6 +889,8 @@ function downloadKML(content, filename) {
 
 const input = document.getElementById("searchInput");
 const suggestBox = document.getElementById("suggestBox");
+const customerInput = document.getElementById("customerSearchInput");
+const customerSuggestBox = document.getElementById("customerSuggestBox");
 let suggestTimer = null;
 
 /* Autocomplete địa chỉ */
@@ -907,10 +931,54 @@ input.addEventListener("input", () => {
   }, 300);
 });
 
+customerInput.addEventListener("input", () => {
+  const q = customerInput.value.trim().toLowerCase();
+  customerSuggestBox.innerHTML = "";
+
+  if (q.length < 2) {
+    customerSuggestBox.style.display = "none";
+    return;
+  }
+
+  const visibleTapDiems = getVisibleTapDiemNames();
+
+  const matches = customerSearchList
+    .filter(c =>
+      visibleTapDiems.includes(c.tapDiem) &&
+      (
+        (c.name && c.name.toLowerCase().includes(q)) ||
+        (c.address && c.address.toLowerCase().includes(q))
+      )
+    )
+    .slice(0, 10);
+
+  if (!matches.length) {
+    customerSuggestBox.style.display = "none";
+    return;
+  }
+
+  matches.forEach(c => {
+    const div = document.createElement("div");
+    div.className = "suggest-item";
+    div.innerHTML = `<b>${c.name}</b> – ${c.address || ''}`;
+
+    div.onclick = () => {
+      customerInput.value = `${c.name} - ${c.address || ''}`;
+      customerSuggestBox.style.display = "none";
+      locateCustomerInTapDiem(c);
+    };
+
+    customerSuggestBox.appendChild(div);
+  });
+
+  customerSuggestBox.style.display = "block";
+});
+
 /* Ẩn gợi ý khi click ngoài */
 document.addEventListener("click", e => {
   if (!e.target.closest(".search-row")) {
     suggestBox.style.display = "none";
+    customerSuggestBox.style.display = "none";
   }
 });
 
@@ -988,6 +1056,42 @@ function collapseControlBox() {
 
   document.querySelectorAll('.eff-filter')
   .forEach(cb => cb.addEventListener('change', applyFilter));
+
+function locateCustomerInTapDiem(customer) {
+  const p = allPoints.find(tp => tp.name === customer.tapDiem);
+  if (!p) {
+    alert("Không tìm thấy tập điểm của khách hàng");
+    return;
+  }
+
+  map.setView([p.lat, p.lng], 16);
+  p.circle.openPopup();
+
+  allPoints.forEach(x => {
+    x.circle.setStyle({ weight: 2 });
+    const el = x.circle.getElement();
+    if (el) el.classList.remove("blink");
+  });
+
+  p.circle.setStyle({ weight: 4 });
+  const el = p.circle.getElement();
+  if (el) el.classList.add("blink");
+
+  setTimeout(() => {
+    showCustomer(p.name);
+
+    const rows = document.querySelectorAll(
+      `#customer-${p.name} table tr`
+    );
+
+    rows.forEach(r => {
+      if (r.innerText.includes(customer.name)) {
+        r.style.background = "#fff3cd";
+        r.style.fontWeight = "bold";
+      }
+    });
+  }, 300);
+}
   
 </script>
 <!-- LOGO GÓC TRÁI DƯỚI -->
@@ -996,5 +1100,6 @@ function collapseControlBox() {
 </div>
 </body>
 </html>
+
 
 
