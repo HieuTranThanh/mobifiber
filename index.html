@@ -504,6 +504,12 @@ function loadData() {
   );
 
   query.send(res => {
+    // ✅ KIỂM TRA LỖI GOOGLE SHEET
+    if (res.isError()) {
+      alert("❌ Không đọc được dữ liệu Google Sheet (Danh sách tập điểm)");
+      console.error("Google Sheet error:", res.getMessage(), res.getDetailedMessage());
+      return;
+    }
     const data = res.getDataTable();
 
     // Duyệt từng dòng dữ liệu
@@ -572,6 +578,12 @@ function loadCustomerData() {
   );
 
   query.send(res => {
+    // ✅ KIỂM TRA LỖI GOOGLE SHEET
+    if (res.isError()) {
+      alert("❌ Không đọc được dữ liệu Google Sheet (Danh sách tập điểm)");
+      console.error("Google Sheet error:", res.getMessage(), res.getDetailedMessage());
+      return;
+    }
     const data = res.getDataTable();
 
     for (let i = 0; i < data.getNumberOfRows(); i++) {
@@ -1098,6 +1110,7 @@ function locateCustomerInTapDiem(customer) {
 </div>
 </body>
 </html>
+
 
 
 
