@@ -534,7 +534,7 @@ function loadData() {
 
       const hasCustomer = customerMarker !== null;
       // Popup thông tin tập điểm FTTH
-      circle.bindPopup(`
+      const basePopup = `
         <b>${data.getValue(i, 2)}</b><br>
       
         <b>Tọa độ:</b>
@@ -552,13 +552,16 @@ function loadData() {
         <b>Đã dùng:</b> ${data.getValue(i, 4)}<br>
         <b>Còn lại:</b> ${data.getValue(i, 5)}<br>
         <b>Hiệu suất:</b> ${(eff * 100).toFixed(1)}%
-          <hr>
+        <hr>
+      
         <a href="#" onclick="event.preventDefault(); showCustomer('${data.getValue(i, 2)}')">
           📋 Xem danh sách khách hàng
         </a>
       
         <div id="customer-${data.getValue(i, 2)}" style="margin-top:6px"></div>
-      `);
+      `;
+      
+      circle.bindPopup(basePopup);
 
       // Lưu thông tin tập điểm
       allPoints.push({
@@ -567,7 +570,8 @@ function loadData() {
         usedPort: data.getValue(i, 4),
         freePort: data.getValue(i, 5),
         eff, lat, lng,
-        circle
+        circle,
+        basePopup   // ⭐ LƯU POPUP GỐC
       });
     }
 
@@ -753,34 +757,19 @@ function handleCustomer(lat, lng) {
     });
 
     // Popup chi tiết tập điểm gợi ý quanh vị trí khách hàng
-    p.circle.bindPopup(`
-      <b>${p.name}</b><br>
+    const bestBadge =
+      i === 0
+        ? '<b style="color:green">⭐ TẬP ĐIỂM TỐT NHẤT</b>'
+        : '';
     
-      <b>Tọa độ:</b>
-      <a href="https://www.google.com/maps?q=${p.lat},${p.lng}" target="_blank">
-        ${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}
-      </a><br>
-    
-      <b>Dẫn đường:</b>
-      <a href="https://www.google.com/maps/dir/?api=1&origin=${customerMarker.getLatLng().lat},${customerMarker.getLatLng().lng}&destination=${p.lat},${p.lng}"
-         target="_blank">
-        🧭 Chỉ đường từ vị trí khách hàng
-      </a><br>
-    
-      <b>Dung lượng:</b> ${p.maxPort} Port<br>
-      <b>Đã dùng:</b> ${p.usedPort}<br>
-      <b>Còn lại:</b> ${p.freePort}<br>
-      <b>Hiệu suất:</b> ${(p.eff * 100).toFixed(1)}%<br>
+    const suggestPopup = `
+      ${p.basePopup}
+      <hr>
       <b>Khoảng cách:</b> ${Math.round(p.dist)} m<br>
-        <hr>
-      <a href="#" onclick="event.preventDefault(); showCustomer('${p.name}')">
-        📋 Xem danh sách khách hàng
-      </a>
+      ${bestBadge}
+    `;
     
-      <div id="customer-${p.name}" style="margin-top:6px"></div>
-    
-      ${i === 0 ? '<b style="color:green">⭐ TẬP ĐIỂM TỐT NHẤT</b>' : ''}
-    `);
+    p.circle.setPopupContent(suggestPopup);
 
     suggestionLayers.push(line);
   });
@@ -1113,3 +1102,4 @@ function locateCustomerInTapDiem(customer) {
 </div>
 </body>
 </html>
+
