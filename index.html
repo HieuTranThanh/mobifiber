@@ -112,7 +112,7 @@
       position: absolute;
       top: 34px;
       left: 0;
-      right: 42px;
+      right: 0;
       background: white;
       border: 1px solid #ccc;
       border-radius: 4px;
@@ -223,16 +223,18 @@
     <span id="arrow" onclick="toggleControl()" style="float:right; cursor:pointer">▲</span>
   </div>
 
-  <!-- Ô nhập tìm kiếm -->
-  <div class="search-row" style="position:relative">
-    <input id="searchInput" placeholder="dbl-click map/nhập tọa độ, địa chỉ">
-    <button onclick="searchLocation()">Tìm</button>
-
-  <!-- Ô tìm kiếm KHÁCH HÀNG -->
-  <div class="search-row" style="position:relative">
-    <input id="customerSearchInput" placeholder="Tìm khách hàng (Tên - Địa chỉ)">
-    <div id="customerSuggestBox" class="suggest-box"></div>
-  </div>
+    <!-- Ô nhập tìm kiếm -->
+    <div class="search-row" style="position:relative">
+      <input id="searchInput" placeholder="dbl-click map/nhập tọa độ, địa chỉ">
+      <button onclick="searchLocation()">Tìm</button>
+      <div id="suggestBox" class="suggest-box"></div>
+    </div>
+    
+    <!-- Ô tìm kiếm KHÁCH HÀNG -->
+    <div class="search-row" style="position:relative">
+      <input id="customerSearchInput" placeholder="Tìm khách hàng (Tên - Địa chỉ)">
+      <div id="customerSuggestBox" class="suggest-box"></div>
+    </div>
 
     <!-- Danh sách gợi ý địa chỉ -->
     <div id="suggestBox" class="suggest-box"></div>
@@ -1100,6 +1102,7 @@ function locateCustomerInTapDiem(customer) {
 </div>
 </body>
 </html>
+
 
 
 
