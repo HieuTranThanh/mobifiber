@@ -342,7 +342,7 @@ let suggestionLayers = [];
 // Cờ xác định lần load đầu tiên (fitBounds)
 let isInitialLoad = true;
 
-// Marker khi dbl-click map
+// Marker vị trí khách hàng khi double-click trên map
 let clickMarker = null;
 
 /* =====================================================
@@ -727,7 +727,7 @@ function handleCustomer(lat, lng) {
   map.setView([lat, lng], 15);
   
   // ===============================
-  // KIỂM TRA PHẠM VI BÁN HÀNG ≤ 1KM
+  // Kiểm tra khoảng cách tới tập điểm gần nhất ≤ 1km
   // ===============================
   const nearestPoint = allPoints
     .map(p => ({ ...p, dist: haversine(lat, lng, p.lat, p.lng) }))
@@ -1123,3 +1123,4 @@ fetch(
 </script>
 </body>
 </html>
+
