@@ -350,7 +350,6 @@ let clickMarker = null;
    ===================================================== */
 
 map = L.map('map', {
-  zoomControl: false,
   doubleClickZoom: false
 }).setView([10.8, 106.7], 11);
 
@@ -497,7 +496,7 @@ function showCustomer(tapDiemName) {
    LOAD DỮ LIỆU GOOGLE SHEET
    ===================================================== */
 
-google.charts.load('current', { packages: ['corechart'] });
+google.charts.load('current');
 google.charts.setOnLoadCallback(() => {
   loadData();
   loadCustomerData();
@@ -1123,3 +1122,4 @@ fetch(
 </script>
 </body>
 </html>
+
