@@ -208,15 +208,6 @@
       pointer-events: none;
     }
 
-    /* =========================
-       CHIỀU RỘNG POPUP LEAFLET
-       ========================= */
-    .leaflet-popup-content {
-      min-width: 350px;
-      max-width: min(500px, 90vw);
-      font-size: 13px;
-    }
-
   </style>
 </head>
 
@@ -1154,7 +1145,7 @@ function renderDirection(lat, lng) {
 
   return `
     <a href="${url}" target="_blank" rel="noopener">
-      🧭 Chỉ đường trên Google Maps
+      🧭 đến tập điểm
     </a>
   `;
 
@@ -1175,6 +1166,7 @@ fetch(
 </script>
 </body>
 </html>
+
 
 
 
