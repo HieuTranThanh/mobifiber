@@ -550,7 +550,9 @@ function loadData() {
         </a><br>
       
         <b>Dẫn đường:</b>
-        ${renderDirection(lat, lng)}<br>
+        <span class="direction-holder" data-lat="${lat}" data-lng="${lng}">
+        <i style="color:#999">Chưa lấy được vị trí khách hàng</i>
+        </span><br>
       
         <b>Dung lượng:</b> ${data.getValue(i, 3)} Port<br>
         <b>Đã dùng:</b> ${data.getValue(i, 4)}<br>
@@ -566,6 +568,19 @@ function loadData() {
       `;
       
       circle.bindPopup(basePopup);
+
+      circle.on("popupopen", e => {
+        const popupEl = e.popup.getElement();
+        if (!popupEl) return;
+      
+        const holder = popupEl.querySelector(".direction-holder");
+        if (!holder) return;
+      
+        const lat = holder.dataset.lat;
+        const lng = holder.dataset.lng;
+      
+        holder.innerHTML = renderDirection(lat, lng);
+      });
 
       // Lưu thông tin tập điểm
       allPoints.push({
@@ -1148,6 +1163,7 @@ fetch(
 </script>
 </body>
 </html>
+
 
 
 
