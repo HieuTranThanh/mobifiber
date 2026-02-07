@@ -251,20 +251,25 @@
       <input type="checkbox" class="eff-filter" value="lt20" checked>
       &lt; 20%
     </label><br>
-
+    
     <label>
       <input type="checkbox" class="eff-filter" value="20_50" checked>
       20 – 50%
     </label><br>
-
+    
     <label>
       <input type="checkbox" class="eff-filter" value="50_80" checked>
       50 – 80%
     </label><br>
-
+    
     <label>
-      <input type="checkbox" class="eff-filter" value="gte80" checked>
-      ≥ 80%
+      <input type="checkbox" class="eff-filter" value="80_100" checked>
+      80 – &lt;100%
+    </label><br>
+    
+    <label>
+      <input type="checkbox" class="eff-filter" value="gte100" checked>
+      ≥ 100% (Full)
     </label>
   </div>
 </div>
@@ -674,21 +679,22 @@ function renderPoints() {
 function applyFilter() {
   // Lấy tất cả checkbox đang được tick
   const checked = Array.from(
-    document.querySelectorAll('.eff-filter:checked')
-  ).map(cb => cb.value);
-
-  allPoints.forEach(p => {
-    let show = false;
-
-    checked.forEach(v => {
-      if (v === 'lt20'   && p.eff < 0.2) show = true;
-      if (v === '20_50'  && p.eff >= 0.2 && p.eff < 0.5) show = true;
-      if (v === '50_80'  && p.eff >= 0.5 && p.eff < 0.8) show = true;
-      if (v === 'gte80'  && p.eff >= 0.8) show = true;
+      document.querySelectorAll('.eff-filter:checked')
+    ).map(cb => cb.value);
+  
+    allPoints.forEach(p => {
+      let show = false;
+  
+      checked.forEach(v => {
+        if (v === 'lt20'     && p.eff < 0.2) show = true;
+        if (v === '20_50'    && p.eff >= 0.2 && p.eff < 0.5) show = true;
+        if (v === '50_80'    && p.eff >= 0.5 && p.eff < 0.8) show = true;
+        if (v === '80_100'   && p.eff >= 0.8 && p.eff < 1)   show = true;
+        if (v === 'gte100'   && p.eff >= 1)  show = true;
+      });
+  
+      show ? p.circle.addTo(map) : map.removeLayer(p.circle);
     });
-
-    show ? p.circle.addTo(map) : map.removeLayer(p.circle);
-  });
 }
 
 /* =====================================================
@@ -1166,3 +1172,4 @@ fetch(
 </script>
 </body>
 </html>
+
