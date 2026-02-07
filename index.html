@@ -247,6 +247,10 @@
   </div>
 
   <div id="filterContent" class="filter-content">
+    <div style="margin-bottom:6px; font-weight:bold">
+      📊 Tổng số tập điểm: <span id="cnt-total">0</span>
+    </div>
+    
     <label>
       <input type="checkbox" class="eff-filter" value="lt20" checked>
       &lt; 20% (số lượng: <span id="cnt-lt20">0</span>)
@@ -692,11 +696,15 @@ function updateEffCounts() {
     else counts.gte100++;
   });
 
+  // 🔹 CẬP NHẬT SỐ LƯỢNG TỪNG NHÓM
   document.getElementById("cnt-lt20").textContent     = counts.lt20;
   document.getElementById("cnt-20_50").textContent   = counts['20_50'];
   document.getElementById("cnt-50_80").textContent   = counts['50_80'];
   document.getElementById("cnt-80_100").textContent  = counts['80_100'];
   document.getElementById("cnt-gte100").textContent  = counts.gte100;
+
+  // TỔNG SỐ TẬP ĐIỂM
+  document.getElementById("cnt-total").textContent = allPoints.length;
 }
 
 /* =====================================================
@@ -1199,6 +1207,7 @@ fetch(
 </script>
 </body>
 </html>
+
 
 
 
