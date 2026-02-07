@@ -911,6 +911,13 @@ let suggestTimer = null;
 /* Autocomplete địa chỉ */
 input.addEventListener("input", () => {
   const q = input.value.trim();
+  
+  if (!q) {
+    customerLatLng = null;         
+    suggestBox.style.display = "none";
+    return;
+  }
+  
   if (q.length < 3) {
     suggestBox.style.display = "none";
     return;
@@ -1140,6 +1147,7 @@ fetch(
 </script>
 </body>
 </html>
+
 
 
 
