@@ -624,7 +624,7 @@ function loadCustomerData() {
     for (let i = 0; i < data.getNumberOfRows(); i++) {
       const tenKH   = data.getValue(i, 5);   // Cột F
       const tapDiem = data.getValue(i, 13);  // Cột N
-      const diaChi  = data.getValue(i, 8);   // Cột I (có dấu , OK)
+      const diaChi  = data.getValue(i, 8);   // Cột I
       const status  = data.getValue(i, 15);  // Cột P
 
       if (!tapDiem) continue;
@@ -1207,6 +1207,7 @@ fetch(
 </script>
 </body>
 </html>
+
 
 
 
