@@ -560,7 +560,7 @@ function loadData() {
 
       // Vẽ vòng tròn tập điểm
       const circle = L.circle([lat, lng], {
-        radius: 250,
+        radius: 220,
         color: getColor(eff),
         fillColor: getColor(eff),
         fillOpacity: 0.5,
@@ -907,7 +907,7 @@ function exportAllCirclesToKML() {
   let placemarks = "";
 
   allPoints.forEach(p => {
-    const polygon = circleToPolygon(p.lat, p.lng, 250);
+    const polygon = circleToPolygon(p.lat, p.lng, 220);
     const color = colorToKML(getColor(p.eff));
 
     const description = `
@@ -1231,6 +1231,7 @@ fetch(
 </script>
 </body>
 </html>
+
 
 
 
