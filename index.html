@@ -465,6 +465,7 @@ function circleToPolygon(lat, lng, radiusMeters, points = 60) {
   return coords.join(" ");
 }
 
+// Render danh sách khách hàng thuộc một tập điểm (dùng trong popup)
 function renderCustomerList(tapDiemName) {
   const list = customerByTapDiem[tapDiemName] || [];
 
@@ -651,6 +652,7 @@ function loadCustomerData() {
   });
 }
 
+// Lấy danh sách tên tập điểm đang được hiển thị trên map (phục vụ lọc KH)
 function getVisibleTapDiemNames() {
   return allPoints
     .filter(p => map.hasLayer(p.circle))
@@ -1134,9 +1136,11 @@ function collapseControlBox() {
   }
 }
 
+  // Gắn sự kiện thay đổi filter hiệu suất để cập nhật hiển thị tập điểm
   document.querySelectorAll('.eff-filter')
   .forEach(cb => cb.addEventListener('change', applyFilter));
 
+// Xác định và zoom tới tập điểm mà khách hàng đang đấu nối để ứng cứu nhanh
 function locateCustomerInTapDiem(customer) {
   // customerLatLng = null;
   const p = allPoints.find(tp => tp.name === customer.tapDiem);
@@ -1174,6 +1178,7 @@ function locateCustomerInTapDiem(customer) {
   }, 300);
 }
 
+// Tạo link Google Maps dẫn đường từ vị trí khách hàng tới tập điểm
 function renderDirection(lat, lng) {
   if (!customerLatLng) {
     return `<i style="color:#999">Chưa lấy được vị trí khách hàng</i>`;
@@ -1197,6 +1202,7 @@ function renderDirection(lat, lng) {
 <div class="branding">
   📶PHÒNG VIỄN THÔNG
 </div>
+<!-- Script ghi nhận truy cập (tracking) -->
 <script>
 fetch(
   "https://script.google.com/macros/s/AKfycbypr-0OMKp6UopO_-cET65QxdwTpeoMV9q13nJMdt3PBR-GtTHkKBrfHsdqTJR24bko/exec"
@@ -1207,6 +1213,7 @@ fetch(
 </script>
 </body>
 </html>
+
 
 
 
