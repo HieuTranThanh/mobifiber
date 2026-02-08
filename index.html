@@ -238,46 +238,6 @@
       <div id="customerSuggestBox" class="suggest-box"></div>
     </div>
 
-  <!-- Filter theo hiệu suất (thu gọn) -->
-<div class="filter-box">
-
-  <div class="filter-title" onclick="toggleFilter()">
-    <b>Filter hiệu suất sử dụng tập điểm</b>
-    <span id="filterArrow" style="float:right">▼</span>
-  </div>
-
-  <div id="filterContent" class="filter-content">
-    <div style="margin-bottom:6px; font-weight:bold">
-      📊 Tổng số tập điểm: <span id="cnt-total">0</span>
-    </div>
-    
-    <label>
-      <input type="checkbox" class="eff-filter" value="lt20" checked>
-      &lt; 20% (số lượng: <span id="cnt-lt20">0</span>)
-    </label><br>
-
-    <label>
-      <input type="checkbox" class="eff-filter" value="20_50" checked>
-      20 – 50% (số lượng: <span id="cnt-20_50">0</span>)
-    </label><br>
-    
-    <label>
-      <input type="checkbox" class="eff-filter" value="50_80" checked>
-      50 – 80% (số lượng: <span id="cnt-50_80">0</span>)
-    </label><br>
-    
-    <label>
-      <input type="checkbox" class="eff-filter" value="80_100" checked>
-      80 – &lt;100% (số lượng: <span id="cnt-80_100">0</span>)
-    </label><br>
-    
-    <label>
-      <input type="checkbox" class="eff-filter" value="gte100" checked>
-      ≥ 100% Full (số lượng: <span id="cnt-gte100">0</span>)
-    </label>
-  </div>
-</div>
-
   <!-- Nhập phản ánh sự cố MobiFiber -->
   <div style="margin-top:6px">
     <button
@@ -305,6 +265,46 @@
     </button>
   </div>
 </div>
+
+  <!-- Filter theo hiệu suất (thu gọn) -->
+  <div class="filter-box">
+  
+    <div class="filter-title" onclick="toggleFilter()">
+      <b>Filter hiệu suất sử dụng tập điểm</b>
+      <span id="filterArrow" style="float:right">▼</span>
+    </div>
+  
+    <div id="filterContent" class="filter-content">
+      <div style="margin-bottom:6px; font-weight:bold">
+        📊 Tổng số tập điểm: <span id="cnt-total">0</span>
+      </div>
+      
+      <label>
+        <input type="checkbox" class="eff-filter" value="lt20" checked>
+        &lt; 20% (số lượng: <span id="cnt-lt20">0</span>)
+      </label><br>
+  
+      <label>
+        <input type="checkbox" class="eff-filter" value="20_50" checked>
+        20 – 50% (số lượng: <span id="cnt-20_50">0</span>)
+      </label><br>
+      
+      <label>
+        <input type="checkbox" class="eff-filter" value="50_80" checked>
+        50 – 80% (số lượng: <span id="cnt-50_80">0</span>)
+      </label><br>
+      
+      <label>
+        <input type="checkbox" class="eff-filter" value="80_100" checked>
+        80 – &lt;100% (số lượng: <span id="cnt-80_100">0</span>)
+      </label><br>
+      
+      <label>
+        <input type="checkbox" class="eff-filter" value="gte100" checked>
+        ≥ 100% Full (số lượng: <span id="cnt-gte100">0</span>)
+      </label>
+    </div>
+  </div>
 
 <!-- =========================
      CHÚ GIẢI MÀU HIỆU SUẤT
@@ -1230,6 +1230,7 @@ fetch(
 </script>
 </body>
 </html>
+
 
 
 
