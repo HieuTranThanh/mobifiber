@@ -1145,6 +1145,7 @@ function collapseControlBox() {
   .forEach(cb => cb.addEventListener('change', applyFilter));
 
 // Xác định và zoom tới tập điểm mà khách hàng đang đấu nối
+// Highlight tập điểm và khách hàng tương ứng trong danh sách
 function locateCustomerInTapDiem(customer) {
   // customerLatLng = null;
   const p = allPoints.find(tp => tp.name === customer.tapDiem);
@@ -1217,6 +1218,7 @@ fetch(
 </script>
 </body>
 </html>
+
 
 
 
