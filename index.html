@@ -219,7 +219,7 @@
 
     <!-- Ô nhập vị trí khách hàng: gõ tọa độ / địa chỉ hoặc tự động fill khi double-click trên bản đồ -->
     <div class="search-row" style="position:relative">
-      <input id="searchInput" placeholder="Dbl-click on map/gõ tọa độ, địa chỉ">
+      <input id="searchInput" placeholder="Nhấp đúp lên bản đồ hoặc gõ tọa độ, địa chỉ">
       <button onclick="searchLocation()">Tìm</button>
       <!-- Hộp gợi ý địa chỉ từ dịch vụ Nominatim -->
       <div id="suggestBox" class="suggest-box"></div>
@@ -248,22 +248,22 @@
   <!-- Export danh sách cần nâng cấp -->
   <div style="margin-top:6px">
     <button onclick="exportUpgradeList()" style="width:100%">
-      Export DS tập điểm cần nâng cấp
+      Xuất danh sách tập điểm cần nâng cấp
     </button>
   </div>
 
   <!-- Export toàn bộ tập điểm ra KML -->
   <div style="margin-top:6px">
     <button onclick="exportAllCirclesToKML()" style="width:100%">
-      Export toàn bộ tập điểm (*.KML)
+      Xuất toàn bộ tập điểm (*.KML)
     </button>
   </div>
 
-<!-- Filter theo hiệu suất (thu gọn) -->
+<!-- Lọc theo hiệu suất (thu gọn) -->
   <div class="filter-box">
   
     <div class="filter-title" onclick="toggleFilter()">
-      <b>Filter hiệu suất sử dụng tập điểm</b>
+      <b>Lọc hiệu suất sử dụng tập điểm</b>
       <span id="filterArrow" style="float:right">▼</span>
     </div>
   
@@ -294,7 +294,7 @@
       
       <label>
         <input type="checkbox" class="eff-filter" value="gte100" checked>
-        ≥ 100% Full (số lượng: <span id="cnt-gte100">0</span>)
+        ≥ 100% Đầy tải (số lượng: <span id="cnt-gte100">0</span>)
       </label>
     </div>
   </div>
@@ -315,7 +315,7 @@
     <span class="col">🔴 80–&lt;100%</span>
   </div>
   <div>
-    <span class="col">⚫ ≥100% Full</span>
+    <span class="col">⚫ ≥100% Đầy tải</span>
   </div>
 </div>
 
@@ -335,7 +335,8 @@ const CONFIG = {
   SHEET_ID: '1AkswJCHRClc7wAoagpRqtrG9OATm5_6qsRK0gTHZqcY',
   SHEET_TAPDIEM: 'Danh sách tập điểm S2',
   SHEET_TAPDIEM_GID: '1472299907',
-  SHEET_CUSTOMER: 'Danh sách khách hàng'
+  SHEET_CUSTOMER: 'Danh sách khách hàng',
+  SHEET_CUSTOMER_GID: '341989509'
 };
 
 // Đối tượng map Leaflet
@@ -369,6 +370,8 @@ let clickMarker = null;
 // Trang thai tai du lieu
 let isPointDataReady = false;
 let isCustomerDataReady = false;
+let pointByName = new Map();
+let normalizedPointBuckets = new Map();
 
 /* =====================================================
    KHỞI TẠO MAP
@@ -500,6 +503,10 @@ function normalizeKey(value) {
   return normalizeText(value).replace(/\s+/g, "");
 }
 
+function canonicalName(value) {
+  return String(value ?? "").trim();
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, ch => ({
     "&": "&amp;",
@@ -584,6 +591,21 @@ function rowsToObjects(csvRows) {
   });
 }
 
+function hasAnyHeader(headers, aliases) {
+  const aliasList = Array.isArray(aliases) ? aliases : [aliases];
+  return aliasList.some(alias => {
+    const target = normalizeHeader(alias);
+    return headers.some(header => normalizeHeader(header) === target);
+  });
+}
+
+function validateSheetRows(rows, requiredHeaders) {
+  if (!rows.length) return false;
+
+  const headers = Object.keys(rows[0]);
+  return requiredHeaders.every(group => hasAnyHeader(headers, group));
+}
+
 function getField(row, aliases) {
   const aliasList = Array.isArray(aliases) ? aliases : [aliases];
   const entries = Object.entries(row);
@@ -620,7 +642,7 @@ function toPercentRatio(value) {
   return numeric > 1 ? numeric / 100 : numeric;
 }
 
-async function fetchSheetRows({ gid, sheetName, preferExport = false }) {
+async function fetchSheetRows({ gid, sheetName, preferExport = false, requiredHeaders = [] }) {
   const exportUrl = gid
     ? `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/export?format=csv&gid=${gid}`
     : null;
@@ -642,41 +664,66 @@ async function fetchSheetRows({ gid, sheetName, preferExport = false }) {
       }
 
       const text = await response.text();
-      return rowsToObjects(parseCsv(text));
+      const rows = rowsToObjects(parseCsv(text));
+      if (requiredHeaders.length && !validateSheetRows(rows, requiredHeaders)) {
+        throw new Error(`Schema mismatch for ${url}`);
+      }
+
+      return rows;
     } catch (error) {
       lastError = error;
     }
   }
 
-  throw lastError || new Error("Khong doc duoc du lieu");
+  throw lastError || new Error("Không đọc được dữ liệu");
+}
+
+function registerPoint(point) {
+  pointByName.set(point.nameKey, point);
+
+  const normalized = normalizeKey(point.name);
+  const bucket = normalizedPointBuckets.get(normalized) || [];
+  bucket.push(point);
+  normalizedPointBuckets.set(normalized, bucket);
+}
+
+function resolvePointByTapDiemName(tapDiemName) {
+  const exactKey = canonicalName(tapDiemName);
+  if (pointByName.has(exactKey)) {
+    return pointByName.get(exactKey);
+  }
+
+  const normalized = normalizeKey(tapDiemName);
+  const bucket = normalizedPointBuckets.get(normalized) || [];
+  return bucket.length === 1 ? bucket[0] : null;
 }
 
 function buildBasePopup(point) {
   const directionHtml = customerLatLng
     ? renderDirection(point.lat, point.lng)
-    : `<i style="color:#999">Chua lay duoc vi tri khach hang</i>`;
+    : `<i style="color:#999">Chưa lấy được vị trí khách hàng</i>`;
 
   return `
     <b>${escapeHtml(point.name)}</b><br>
 
-    <b>Toa do:</b>
+    <b>Tọa độ:</b>
     <a href="https://www.google.com/maps?q=${point.lat},${point.lng}" target="_blank" rel="noopener">
       ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}
     </a><br>
 
-    <b>Dan duong:</b>
+    <b>Dẫn đường:</b>
     <span class="direction-holder" data-lat="${point.lat}" data-lng="${point.lng}">
       ${directionHtml}
     </span><br>
 
-    <b>Dung luong:</b> ${escapeHtml(point.maxPort)} Port<br>
-    <b>Da dung:</b> ${escapeHtml(point.usedPort)}<br>
-    <b>Con lai:</b> ${escapeHtml(point.freePort)}<br>
-    <b>Hieu suat:</b> ${(point.eff * 100).toFixed(1)}%
+    <b>Dung lượng:</b> ${escapeHtml(point.maxPort)} Port<br>
+    <b>Đã dùng:</b> ${escapeHtml(point.usedPort)}<br>
+    <b>Còn lại:</b> ${escapeHtml(point.freePort)}<br>
+    <b>Hiệu suất:</b> ${(point.eff * 100).toFixed(1)}%
     <hr>
 
     <a href="#" class="show-customer-link" data-point-id="${point.id}">
-      Xem danh sach khach hang hien tai
+      Xem danh sách khách hàng hiện tại
     </a>
 
     <div id="${point.customerContainerId}" style="margin-top:6px"></div>
@@ -685,14 +732,14 @@ function buildBasePopup(point) {
 
 // Render danh sách khách hàng thuộc một tập điểm (dùng trong popup)
 function renderCustomerList(point) {
-  const list = customerByTapDiem[point.key] || [];
+  const list = customerByTapDiem[point.id] || [];
 
   if (!isCustomerDataReady) {
-    return `<i>Dang tai du lieu khach hang...</i>`;
+    return `<i>Đang tải dữ liệu khách hàng...</i>`;
   }
 
   if (!list.length) {
-    return `<i>Khong co khach hang trong tap diem nay</i>`;
+    return `<i>Không có khách hàng trong tập điểm này</i>`;
   }
 
   let html = `
@@ -734,9 +781,10 @@ function showCustomer(pointId) {
 /* Load dữ liệu Google Sheet theo header thay vì số thứ tự cột. */
 async function initData() {
   customerInput.disabled = true;
-  customerInput.placeholder = "Dang tai du lieu khach hang...";
+  customerInput.placeholder = "Đang tải dữ liệu khách hàng...";
 
-  await Promise.all([loadData(), loadCustomerData()]);
+  await loadData();
+  await loadCustomerData();
 }
 
 async function loadData() {
@@ -744,7 +792,16 @@ async function loadData() {
     const rows = await fetchSheetRows({
       gid: CONFIG.SHEET_TAPDIEM_GID,
       sheetName: CONFIG.SHEET_TAPDIEM,
-      preferExport: true
+      preferExport: true,
+      requiredHeaders: [
+        ["Tên tập điểm S2", "Ten tap diem S2"],
+        ["Dung lượng S2", "Dung luong S2"],
+        ["Port đã dùng", "Port da dung"],
+        ["Port còn lại", "Port con lai"],
+        ["Hiệu suất sử dụng", "Hieu suat su dung"],
+        ["Lat"],
+        ["Long", "Lng"]
+      ]
     });
 
     rows.forEach(row => {
@@ -764,7 +821,8 @@ async function loadData() {
 
       const point = {
         id: makeSafeId("point", name),
-        key: normalizeKey(name),
+        key: canonicalName(name),
+        nameKey: canonicalName(name),
         name,
         maxPort,
         usedPort,
@@ -794,7 +852,7 @@ async function loadData() {
         if (holder) {
           holder.innerHTML = customerLatLng
             ? renderDirection(holder.dataset.lat, holder.dataset.lng)
-            : `<i style="color:#999">Chua lay duoc vi tri khach hang</i>`;
+            : `<i style="color:#999">Chưa lấy được vị trí khách hàng</i>`;
         }
 
         const trigger = popupEl.querySelector(".show-customer-link");
@@ -806,6 +864,7 @@ async function loadData() {
         }
       });
 
+      registerPoint(point);
       allPoints.push(point);
     });
 
@@ -813,7 +872,7 @@ async function loadData() {
     updateEffCounts();
     isPointDataReady = true;
   } catch (error) {
-    alert("Khong doc duoc du lieu Google Sheet (Danh sach tap diem)");
+    alert("Không đọc được dữ liệu Google Sheet (Danh sách tập điểm)");
     console.error("Point sheet error:", error);
   }
 }
@@ -821,7 +880,14 @@ async function loadData() {
 async function loadCustomerData() {
   try {
     const rows = await fetchSheetRows({
-      sheetName: CONFIG.SHEET_CUSTOMER
+      gid: CONFIG.SHEET_CUSTOMER_GID,
+      sheetName: CONFIG.SHEET_CUSTOMER,
+      preferExport: true,
+      requiredHeaders: [
+        ["Tên khách hàng", "Tên KHG", "Ten khach hang", "Ten KHG"],
+        ["Tap Diem/Tram Ket noi", "Tập điểm/Trạm Kết nối"],
+        ["Tình Trạng HĐ", "Tinh Trang HD"]
+      ]
     });
 
     rows.forEach(row => {
@@ -831,32 +897,31 @@ async function loadCustomerData() {
       const status = getField(row, ["Tình Trạng HĐ", "Tinh Trang HD"]);
 
       if (!tapDiem) return;
+      const point = resolvePointByTapDiemName(tapDiem);
+      if (!point) return;
 
-      const tapDiemKey = normalizeKey(tapDiem);
-      if (!tapDiemKey) return;
-
-      if (!customerByTapDiem[tapDiemKey]) {
-        customerByTapDiem[tapDiemKey] = [];
+      if (!customerByTapDiem[point.id]) {
+        customerByTapDiem[point.id] = [];
       }
 
       const customer = {
         name,
         address,
         tapDiem,
-        tapDiemKey,
+        pointId: point.id,
         status
       };
 
-      customerByTapDiem[tapDiemKey].push(customer);
+      customerByTapDiem[point.id].push(customer);
       customerSearchList.push(customer);
     });
 
     isCustomerDataReady = true;
     customerInput.disabled = false;
-    customerInput.placeholder = "Tim KH da ban (go ten - dia chi)";
+    customerInput.placeholder = "Tìm KH đã bán (gõ tên - địa chỉ)";
   } catch (error) {
-    customerInput.placeholder = "Khong tai duoc du lieu KH";
-    alert("Khong doc duoc du lieu Google Sheet (Danh sach khach hang)");
+    customerInput.placeholder = "Không tải được dữ liệu KH";
+    alert("Không đọc được dữ liệu Google Sheet (Danh sách khách hàng)");
     console.error("Customer sheet error:", error);
   }
 }
@@ -865,7 +930,7 @@ async function loadCustomerData() {
 function getVisibleTapDiemNames() {
   return allPoints
     .filter(p => map.hasLayer(p.circle))
-    .map(p => p.key);
+    .map(p => p.id);
 }
   
 /* =====================================================
@@ -949,7 +1014,7 @@ function applyFilter() {
 
 function searchLocation() {
   if (!isPointDataReady) {
-    alert("Du lieu tap diem dang tai, vui long thu lai sau.");
+    alert("Dữ liệu tập điểm đang tải, vui lòng thử lại sau.");
     return;
   }
 
@@ -968,7 +1033,7 @@ function searchLocation() {
     .then(r => r.json())
     .then(r => {
       if (!r[0]) {
-        alert("Khong tim thay dia chi can tim.");
+        alert("Không tìm thấy địa chỉ cần tìm.");
         return;
       }
 
@@ -976,7 +1041,7 @@ function searchLocation() {
     })
     .catch(err => {
       console.error("Search location error:", err);
-      alert("Khong tim duoc dia chi. Vui long kiem tra ket noi mang.");
+      alert("Không tìm được địa chỉ. Vui lòng kiểm tra kết nối mạng.");
     });
 
   collapseControlBox();
@@ -994,7 +1059,7 @@ Xử lý khi xác định vị trí khách hàng:
 */
 function handleCustomer(lat, lng) {
   if (!isPointDataReady) {
-    alert("Du lieu tap diem dang tai, vui long thu lai sau.");
+    alert("Dữ liệu tập điểm đang tải, vui lòng thử lại sau.");
     return;
   }
 
@@ -1029,8 +1094,8 @@ function handleCustomer(lat, lng) {
   
   if (!nearestPoint || nearestPoint.dist > 1000) {
     alert(
-      `Khong kha thi de ban hang\n` +
-      `Tap diem con port gan nhat cach ${Math.round(nearestPoint?.dist || 0)} m`
+      `Không khả thi để bán hàng\n` +
+      `Tập điểm còn port gần nhất cách ${Math.round(nearestPoint?.dist || 0)} m`
     );
     return;
   }
@@ -1059,7 +1124,7 @@ function handleCustomer(lat, lng) {
     // Popup chi tiết tập điểm gợi ý quanh vị trí khách hàng
     const bestBadge =
       i === 0
-        ? '<b style="color:green">Tap diem goi y tot nhat</b>'
+        ? '<b style="color:green">Tập điểm gợi ý tốt nhất</b>'
         : '';
     
     const suggestPopup = `
@@ -1103,8 +1168,8 @@ function exportUpgradeList() {
         p.freePort,
         (p.eff * 100).toFixed(1),
         p.eff >= 1
-          ? 'Ưu tiên 1 (Full)'
-          : 'Ưu tiên 2 (Gần full)'
+          ? 'Ưu tiên 1 (Đầy tải)'
+          : 'Ưu tiên 2 (Gần đầy tải)'
       ]);
     }
   });
@@ -1169,7 +1234,7 @@ function exportAllCirclesToKML() {
 </Document>
 </kml>`;
 
-  downloadKML(kml, "Vung_phu_GPON_MobiFiber.kml");
+  downloadKML(kml, "Vùng_phủ_GPON_MobiFiber.kml");
 }
 
 /* Tải file KML */
@@ -1266,7 +1331,7 @@ customerInput.addEventListener("input", () => {
 
   const matches = customerSearchList
     .filter(c =>
-      visibleTapDiems.includes(c.tapDiemKey) &&
+      visibleTapDiems.includes(c.pointId) &&
       (
         (c.name && c.name.toLowerCase().includes(q)) ||
         (c.address && c.address.toLowerCase().includes(q))
@@ -1283,7 +1348,7 @@ customerInput.addEventListener("input", () => {
     const div = document.createElement("div");
     div.className = "suggest-item";
     const strong = document.createElement("strong");
-    strong.textContent = c.name || "(Khong co ten)";
+    strong.textContent = c.name || "(Không có tên)";
     div.appendChild(strong);
     div.appendChild(document.createTextNode(` - ${c.address || ''}`));
 
@@ -1389,7 +1454,7 @@ function collapseControlBox() {
 // Highlight tập điểm và khách hàng tương ứng trong danh sách
 function locateCustomerInTapDiem(customer) {
   // customerLatLng = null;
-  const p = allPoints.find(tp => tp.key === customer.tapDiemKey);
+  const p = allPoints.find(tp => tp.id === customer.pointId);
   if (!p) {
     alert("Không tìm thấy tập điểm của khách hàng");
     return;
