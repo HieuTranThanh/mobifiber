@@ -458,52 +458,9 @@ function updateExportButtons() {
   if (exportKmlBtn) exportKmlBtn.disabled = disabled;
 }
 
-function updateCustomerMappingStatus() {
-  if (!customerMappingStatus || !customerMappingSummary || !customerMappingDetails) return;
-
-  if (!isCustomerDataReady) {
-    customerMappingStatus.style.display = "none";
-    customerMappingDetails.style.display = "none";
-    customerMappingDetails.innerHTML = "";
-    return;
-  }
-
-  if (!unmatchedCustomers.length) {
-    customerMappingStatus.style.display = "block";
-    customerMappingStatus.style.background = "#edf7ed";
-    customerMappingStatus.style.borderColor = "#b7dfb9";
-    customerMappingStatus.style.color = "#1f5f2c";
-    customerMappingSummary.textContent = "Tất cả khách hàng đã ghép được với tập điểm.";
-    customerMappingDetails.style.display = "none";
-    customerMappingDetails.innerHTML = "";
-    return;
-  }
-
-  customerMappingStatus.style.display = "block";
-  customerMappingStatus.style.background = "#fff8e1";
-  customerMappingStatus.style.borderColor = "#f0c36d";
-  customerMappingStatus.style.color = "#7a4f01";
-  customerMappingSummary.innerHTML =
-    `Có <b>${unmatchedCustomers.length}</b> khách hàng chưa ghép được với tập điểm.`;
-
-  customerMappingDetails.style.display = "block";
-  customerMappingDetails.innerHTML = unmatchedCustomers
-    .slice(0, 20)
-    .map(item => {
-      const parts = [
-        escapeHtml(item.name || "Chưa có tên"),
-        item.tapDiem ? `Tập điểm sheet KH: ${escapeHtml(item.tapDiem)}` : "",
-        item.address ? `Địa chỉ: ${escapeHtml(item.address)}` : ""
-      ].filter(Boolean);
-
-      return `<div style="margin-bottom:4px">${parts.join(" | ")}</div>`;
-    })
-    .join("");
-
-  if (unmatchedCustomers.length > 20) {
-    customerMappingDetails.innerHTML +=
-      `<div style="margin-top:6px; font-style:italic">Còn ${unmatchedCustomers.length - 20} dòng khác chưa hiển thị.</div>`;
-  }
+function updateUnmatchedExportButton() {
+  if (!exportUnmatchedCustomersBtn) return;
+  exportUnmatchedCustomersBtn.disabled = !isCustomerDataReady;
 }
 
 function highlightCustomerInPopup(point, customer) {
@@ -532,7 +489,7 @@ async function initData() {
   customerInput.disabled = true;
   customerInput.placeholder = "Đang tải dữ liệu khách hàng...";
   updateExportButtons();
-  updateCustomerMappingStatus();
+  updateUnmatchedExportButton();
 
   await loadData();
   if (!isPointDataReady) {
@@ -688,11 +645,11 @@ async function loadCustomerData() {
     isCustomerDataReady = true;
     customerInput.disabled = false;
     customerInput.placeholder = "Tìm KH đã bán (gõ tên - địa chỉ)";
-    updateCustomerMappingStatus();
+    updateUnmatchedExportButton();
   } catch (error) {
     customerInput.placeholder = "Không tải được dữ liệu KH";
     isCustomerDataReady = false;
-    updateCustomerMappingStatus();
+    updateUnmatchedExportButton();
     alert("Không đọc được dữ liệu Google Sheet (Danh sách khách hàng)");
     console.error("Customer sheet error:", error);
   }
@@ -1019,6 +976,32 @@ function exportAllCirclesToKML() {
   downloadKML(kml, "Vùng_phủ_GPON_MobiFiber.kml");
 }
 
+function exportUnmatchedCustomers() {
+  if (!isCustomerDataReady) {
+    alert("Dữ liệu khách hàng chưa tải xong. Vui lòng thử lại sau.");
+    return;
+  }
+
+  const rows = [[
+    "Tên khách hàng",
+    "Tập điểm trên sheet khách hàng",
+    "Địa chỉ"
+  ]];
+
+  unmatchedCustomers.forEach(item => {
+    rows.push([
+      item.name || "",
+      item.tapDiem || "",
+      item.address || ""
+    ]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(wb, ws, "KhachHangChuaGhep");
+  XLSX.writeFile(wb, "DS_khach_hang_chua_ghep_tap_diem.xlsx");
+}
+
 /* Tải file KML */
 function downloadKML(content, filename) {
   const blob = new Blob([content], {
@@ -1041,11 +1024,9 @@ const input = document.getElementById("searchInput");
 const suggestBox = document.getElementById("suggestBox");
 const customerInput = document.getElementById("customerSearchInput");
 const customerSuggestBox = document.getElementById("customerSuggestBox");
-const customerMappingStatus = document.getElementById("customerMappingStatus");
-const customerMappingSummary = document.getElementById("customerMappingSummary");
-const customerMappingDetails = document.getElementById("customerMappingDetails");
 const exportUpgradeBtn = document.getElementById("exportUpgradeBtn");
 const exportKmlBtn = document.getElementById("exportKmlBtn");
+const exportUnmatchedCustomersBtn = document.getElementById("exportUnmatchedCustomersBtn");
 // Timer debounce autocomplete để tránh gọi API liên tục
 let suggestTimer = null;
 
