@@ -3,7 +3,23 @@
    ===================================================== */
 
 // Cấu hình tập trung để dễ chỉnh khi đổi nguồn dữ liệu hoặc rule nghiệp vụ.
-const CONFIG = window.APP_CONFIG || {};
+const DEFAULT_CONFIG = {
+  SHEET_ID: "",
+  SHEET_TAPDIEM: "",
+  SHEET_TAPDIEM_GID: "",
+  SHEET_CUSTOMER: "",
+  SHEET_CUSTOMER_GID: "",
+  FEEDBACK_FORM_URL: "",
+  TRACKING_SCRIPT_URL: "",
+  POINT_RADIUS_METERS: 220,
+  MAX_SALE_DISTANCE_METERS: 1000,
+  MAX_SUGGESTED_POINTS: 3
+};
+
+const CONFIG = {
+  ...DEFAULT_CONFIG,
+  ...(window.APP_CONFIG || {})
+};
 
 // Đối tượng map Leaflet
 let map;
@@ -502,6 +518,17 @@ async function loadData() {
         map.removeLayer(point.circle);
       }
     });
+    suggestionLayers.forEach(layer => map.removeLayer(layer));
+    suggestionLayers = [];
+    if (customerMarker && map.hasLayer(customerMarker)) {
+      map.removeLayer(customerMarker);
+    }
+    customerMarker = null;
+    if (clickMarker && map.hasLayer(clickMarker)) {
+      map.removeLayer(clickMarker);
+    }
+    clickMarker = null;
+    customerLatLng = null;
     allPoints = [];
     pointByName = new Map();
     normalizedPointBuckets = new Map();
@@ -1060,6 +1087,10 @@ let suggestTimer = null;
 
 if (feedbackBtn) {
   feedbackBtn.addEventListener("click", () => {
+    if (!CONFIG.FEEDBACK_FORM_URL) {
+      alert("Chưa cấu hình link phản ánh sự cố.");
+      return;
+    }
     window.open(CONFIG.FEEDBACK_FORM_URL, "_blank");
   });
 }
