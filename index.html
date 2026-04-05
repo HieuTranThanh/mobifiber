@@ -46,10 +46,6 @@
       <!-- Hộp gợi ý khách hàng đã bán (lọc theo tập điểm đang hiển thị) -->
       <div id="customerSuggestBox" class="suggest-box"></div>
     </div>
-    <div id="customerMappingStatus" style="display:none; margin-top:6px; padding:8px 10px; background:#fff8e1; border:1px solid #f0c36d; border-radius:8px; font-size:13px; color:#7a4f01">
-      <div id="customerMappingSummary"></div>
-      <div id="customerMappingDetails" style="display:none; margin-top:6px; max-height:120px; overflow:auto; font-size:12px; line-height:1.45"></div>
-    </div>
 
   <!-- Nhập phản ánh sự cố MobiFiber -->
   <div style="margin-top:6px">
@@ -75,6 +71,12 @@
   <div style="margin-top:6px">
     <button id="exportKmlBtn" onclick="exportAllCirclesToKML()" style="width:100%" disabled>
       Xuất toàn bộ tập điểm (*.KML)
+    </button>
+  </div>
+
+  <div style="margin-top:6px">
+    <button id="exportUnmatchedCustomersBtn" onclick="exportUnmatchedCustomers()" style="width:100%" disabled>
+      Xuất danh sách khách hàng chưa ghép được với tập điểm
     </button>
   </div>
 
