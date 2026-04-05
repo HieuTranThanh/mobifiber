@@ -50,11 +50,8 @@
   <!-- Nhập phản ánh sự cố MobiFiber -->
   <div style="margin-top:6px">
     <button
+      id="feedbackBtn"
       style="width:100%; background:#e53935; color:white; border:none"
-      onclick="window.open(
-        'https://docs.google.com/forms/d/e/1FAIpQLScf5EuKEWzllRuqEbjtLIIU_n0Z5HU7wZhpRW6NDkVh3Z36gw/viewform',
-        '_blank'
-      )"
     >
       📝 Nhập phản ánh sự cố MobiFiber
     </button>
@@ -146,6 +143,7 @@
 <!-- Nút định vị -->
 <button class="locate-btn" onclick="locateMe()" title="Định vị tôi">📍</button>
 
+<script src="config.js"></script>
 <script src="app.js"></script>
 <!-- LOGO GÓC TRÁI -->
 <div class="branding">
@@ -154,7 +152,7 @@
 <!-- Script ghi nhận truy cập (tracking) -->
 <script>
 fetch(
-  "https://script.google.com/macros/s/AKfycbypr-0OMKp6UopO_-cET65QxdwTpeoMV9q13nJMdt3PBR-GtTHkKBrfHsdqTJR24bko/exec"
+  window.APP_CONFIG.TRACKING_SCRIPT_URL
   + "?url=" + encodeURIComponent(window.location.href)
   + "&v=1",
   { mode: "no-cors" }
@@ -162,7 +160,6 @@ fetch(
 </script>
 </body>
 </html>
-
 
 
 
