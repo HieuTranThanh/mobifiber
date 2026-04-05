@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>MobiFone Đắk Lắk - MobiFiber</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- =========================
+       THƯ VIỆN BẢN ĐỒ LEAFLET
+       ========================= -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- =========================
+       SHEETJS
+       Dùng export Excel cho kỹ thuật
+       ========================= -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+<!-- =========================
+     KHUNG ĐIỀU KHIỂN CHÍNH
+     ========================= -->
+<div class="control-box" id="controlBox">
+  <div class="panel-title">
+    Tìm tập điểm xung quanh khách hàng
+    <!-- Nút thu gọn / mở rộng -->
+    <span id="arrow" onclick="toggleControl()" style="float:right; cursor:pointer">▲</span>
+  </div>
+
+    <!-- Ô nhập vị trí khách hàng: gõ tọa độ / địa chỉ hoặc tự động fill khi double-click trên bản đồ -->
+    <div class="search-row" style="position:relative">
+      <input id="searchInput" placeholder="Nhấp đúp lên bản đồ hoặc gõ tọa độ, địa chỉ">
+      <button onclick="searchLocation()">Tìm</button>
+      <!-- Hộp gợi ý địa chỉ từ dịch vụ Nominatim -->
+      <div id="suggestBox" class="suggest-box"></div>
+    </div>
+    
+    <!-- Ô tìm kiếm khách hàng đã bán -->
+    <div class="search-row" style="position:relative">
+      <input id="customerSearchInput" placeholder="Tìm KH đã bán (gõ tên - địa chỉ)">
+      <!-- Hộp gợi ý khách hàng đã bán (lọc theo tập điểm đang hiển thị) -->
+      <div id="customerSuggestBox" class="suggest-box"></div>
+    </div>
+    <div id="customerMappingStatus" style="display:none; margin-top:6px; padding:8px 10px; background:#fff8e1; border:1px solid #f0c36d; border-radius:8px; font-size:13px; color:#7a4f01">
+      <div id="customerMappingSummary"></div>
+      <div id="customerMappingDetails" style="display:none; margin-top:6px; max-height:120px; overflow:auto; font-size:12px; line-height:1.45"></div>
+    </div>
+
+  <!-- Nhập phản ánh sự cố MobiFiber -->
+  <div style="margin-top:6px">
+    <button
+      style="width:100%; background:#e53935; color:white; border:none"
+      onclick="window.open(
+        'https://docs.google.com/forms/d/e/1FAIpQLScf5EuKEWzllRuqEbjtLIIU_n0Z5HU7wZhpRW6NDkVh3Z36gw/viewform',
+        '_blank'
+      )"
+    >
+      📝 Nhập phản ánh sự cố MobiFiber
+    </button>
+  </div>
+  
+  <!-- Export danh sách cần nâng cấp -->
+  <div style="margin-top:6px">
+    <button id="exportUpgradeBtn" onclick="exportUpgradeList()" style="width:100%" disabled>
+      Xuất danh sách tập điểm cần nâng cấp
+    </button>
+  </div>
+
+  <!-- Export toàn bộ tập điểm ra KML -->
+  <div style="margin-top:6px">
+    <button id="exportKmlBtn" onclick="exportAllCirclesToKML()" style="width:100%" disabled>
+      Xuất toàn bộ tập điểm (*.KML)
+    </button>
+  </div>
+
+<!-- Lọc theo hiệu suất (thu gọn) -->
+  <div class="filter-box">
+  
+    <div class="filter-title" onclick="toggleFilter()">
+      <b>Lọc hiệu suất sử dụng tập điểm</b>
+      <span id="filterArrow" style="float:right">▼</span>
+    </div>
+  
+    <div id="filterContent" class="filter-content">
+      <div style="margin-bottom:6px; font-weight:bold">
+        📊 Tổng số tập điểm: <span id="cnt-total">0</span>
+      </div>
+      
+      <label>
+        <input type="checkbox" class="eff-filter" value="lt20" checked>
+        &lt; 20% (số lượng: <span id="cnt-lt20">0</span>)
+      </label><br>
+  
+      <label>
+        <input type="checkbox" class="eff-filter" value="20_50" checked>
+        20 – 50% (số lượng: <span id="cnt-20_50">0</span>)
+      </label><br>
+      
+      <label>
+        <input type="checkbox" class="eff-filter" value="50_80" checked>
+        50 – 80% (số lượng: <span id="cnt-50_80">0</span>)
+      </label><br>
+      
+      <label>
+        <input type="checkbox" class="eff-filter" value="80_100" checked>
+        80 – &lt;100% (số lượng: <span id="cnt-80_100">0</span>)
+      </label><br>
+      
+      <label>
+        <input type="checkbox" class="eff-filter" value="gte100" checked>
+        ≥ 100% Đầy tải (số lượng: <span id="cnt-gte100">0</span>)
+      </label>
+    </div>
+  </div>
+  
+</div>
+  
+<!-- =========================
+     CHÚ GIẢI MÀU HIỆU SUẤT
+     ========================= -->
+<div class="legend hieusuat">
+  <div class="legend-note">Hiệu suất sử dụng tập điểm</div>
+  <div>
+    <span class="col">🔵 &lt;20%</span>
+    <span class="col">🟢 20–50%</span>
+  </div>
+  <div>
+    <span class="col">🟠 50–80%</span>
+    <span class="col">🔴 80–&lt;100%</span>
+  </div>
+  <div>
+    <span class="col">⚫ ≥100% Đầy tải</span>
+  </div>
+</div>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- Nút định vị -->
+<button class="locate-btn" onclick="locateMe()" title="Định vị tôi">📍</button>
+
+<script src="app.js"></script>
+<!-- LOGO GÓC TRÁI -->
+<div class="branding">
+  📶PHÒNG VIỄN THÔNG
+</div>
+<!-- Script ghi nhận truy cập (tracking) -->
+<script>
+fetch(
+  "https://script.google.com/macros/s/AKfycbypr-0OMKp6UopO_-cET65QxdwTpeoMV9q13nJMdt3PBR-GtTHkKBrfHsdqTJR24bko/exec"
+  + "?url=" + encodeURIComponent(window.location.href)
+  + "&v=1",
+  { mode: "no-cors" }
+).catch(err => console.error("Tracking error:", err));
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+

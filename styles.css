@@ -1,0 +1,183 @@
+    /* =========================
+       STYLE CƠ BẢN CHO MAP
+       ========================= */
+    html, body { height: 100%; margin: 0; }
+    #map { width: 100%; height: 100%; }
+
+    /* =========================
+       KHUNG ĐIỀU KHIỂN (SEARCH + FILTER)
+       ========================= */
+    .control-box {
+      position: absolute;
+      top: 40px;  
+      left: 5px;
+      z-index: 1000;
+      background: white;
+      padding: 10px 12px;
+      border-radius: 6px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      font-size: 13px;
+      min-width: 240px;
+    }
+
+    .panel-title {
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    /* Hàng nhập tìm kiếm */
+    .search-row {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+
+    .search-row input { flex: 1; }
+
+    /* =========================
+       LEGEND HIỆU SUẤT
+       ========================= */
+    .legend {
+      margin-top: 6px;
+      border-top: 1px solid #eee;
+      padding-top: 6px;
+    }
+
+    .legend div { margin-bottom: 4px; }
+
+    /* =========================
+       HIỆU ỨNG NHẤP NHÁY
+       Dùng highlight tập điểm gợi ý
+       ========================= */
+    .blink {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0% { opacity: 1; }
+      50% { opacity: 0.3; }
+      100% { opacity: 1; }
+    }
+
+    /* =========================
+       KHUNG CHÚ GIẢI HIỆU SUẤT (GÓC PHẢI)
+       ========================= */
+    .hieusuat {
+      position: fixed;
+      right: 10px;
+      bottom: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 8px 10px;
+      border-radius: 6px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+      font-size: 13px;
+    }
+
+    .col {
+      display: inline-block;
+      width: 90px;
+    }
+
+    /* =========================
+       GỢI Ý ĐỊA CHỈ (AUTOCOMPLETE)
+       ========================= */
+    .suggest-box {
+      position: absolute;
+      top: 34px;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      max-height: 180px;
+      overflow-y: auto;
+      z-index: 2000;
+      display: none;
+      font-size: 12px;
+    }
+    
+    .suggest-item {
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+    
+    .suggest-item:hover {
+      background: #f0f0f0;
+    }
+
+    /* =========================
+       NÚT ĐỊNH VỊ NGƯỜI DÙNG
+       ========================= */
+    .locate-btn {
+      position: fixed;
+      right: 10px;
+      top: 10px;         
+      z-index: 1001;
+      background: white;
+      border: none;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 0 6px rgba(0,0,0,0.3);
+    }
+    
+    .locate-btn:hover {
+      background: #f0f0f0;
+    }
+
+    /* =========================
+       THU GỌN / MỞ RỘNG CONTROL BOX
+       ========================= */
+    .control-box.collapsed {
+      height: 42px;
+      overflow: hidden;
+      padding-bottom: 4px;
+    }
+    
+    .control-box.collapsed .search-row,
+    .control-box.collapsed select,
+    .control-box.collapsed button,
+    .control-box.collapsed .legend,
+    .control-box.collapsed > div:not(.panel-title) {
+      display: none;
+    }
+
+      /* =========================
+       FILTER HIỆU SUẤT THU GỌN
+       ========================= */
+    .filter-box {
+      margin-top: 6px;
+    }
+    
+    .filter-title {
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .filter-content {
+      margin-top: 6px;
+      display: none; /* MẶC ĐỊNH ẨN */
+    }
+
+    /* =========================
+       LOGO TRÊN CONTROL BOX
+       ========================= */
+    .branding {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      z-index: 1001;
+    
+      background: rgba(255, 255, 255, 0.9);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #0056a3;
+      box-shadow: 0 0 6px rgba(0,0,0,0.25);
+    
+      pointer-events: none;
+    }
