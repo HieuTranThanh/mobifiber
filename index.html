@@ -151,8 +151,12 @@
 </div>
 <!-- Script ghi nhận truy cập (tracking) -->
 <script>
+const trackingUrl =
+  (window.APP_CONFIG && window.APP_CONFIG.TRACKING_SCRIPT_URL) ||
+  "https://script.google.com/macros/s/AKfycbypr-0OMKp6UopO_-cET65QxdwTpeoMV9q13nJMdt3PBR-GtTHkKBrfHsdqTJR24bko/exec";
+
 fetch(
-  window.APP_CONFIG.TRACKING_SCRIPT_URL
+  trackingUrl
   + "?url=" + encodeURIComponent(window.location.href)
   + "&v=1",
   { mode: "no-cors" }
@@ -160,7 +164,6 @@ fetch(
 </script>
 </body>
 </html>
-
 
 
 
