@@ -42,7 +42,7 @@
     
     <!-- Ô tìm kiếm khách hàng đã bán -->
     <div class="search-row" style="position:relative">
-      <input id="customerSearchInput" placeholder="Tìm KH đã bán (gõ tên - địa chỉ)">
+      <input id="customerSearchInput" placeholder="Tìm khách hàng đã bán (gõ tên/địa chỉ)">
       <!-- Hộp gợi ý khách hàng đã bán (lọc theo tập điểm đang hiển thị) -->
       <div id="customerSuggestBox" class="suggest-box"></div>
     </div>
@@ -60,20 +60,20 @@
   <!-- Export danh sách cần nâng cấp -->
   <div style="margin-top:6px">
     <button id="exportUpgradeBtn" onclick="exportUpgradeList()" style="width:100%" disabled>
-      Xuất danh sách tập điểm cần nâng cấp
+      Danh sách tập điểm cần nâng cấp
     </button>
   </div>
 
   <!-- Export toàn bộ tập điểm ra KML -->
   <div style="margin-top:6px">
     <button id="exportKmlBtn" onclick="exportAllCirclesToKML()" style="width:100%" disabled>
-      Xuất toàn bộ tập điểm (*.KML)
+      Danh sách toàn bộ tập điểm (*.KML)
     </button>
   </div>
 
   <div style="margin-top:6px">
     <button id="exportUnmatchedCustomersBtn" onclick="exportUnmatchedCustomers()" style="width:100%" disabled>
-      Xuất DS KH chưa xác định được tập điểm
+      DS KH chưa xác định được tập điểm
     </button>
   </div>
 
@@ -81,7 +81,7 @@
   <div class="filter-box">
   
     <div class="filter-title" onclick="toggleFilter()">
-      <b>Lọc hiệu suất sử dụng tập điểm</b>
+      <b>Lọc theo hiệu suất sử dụng tập điểm</b>
       <span id="filterArrow" style="float:right">▼</span>
     </div>
   
