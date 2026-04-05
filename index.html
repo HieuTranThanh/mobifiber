@@ -231,6 +231,10 @@
       <!-- Hộp gợi ý khách hàng đã bán (lọc theo tập điểm đang hiển thị) -->
       <div id="customerSuggestBox" class="suggest-box"></div>
     </div>
+    <div id="customerMappingStatus" style="display:none; margin-top:6px; padding:8px 10px; background:#fff8e1; border:1px solid #f0c36d; border-radius:8px; font-size:13px; color:#7a4f01">
+      <div id="customerMappingSummary"></div>
+      <div id="customerMappingDetails" style="display:none; margin-top:6px; max-height:120px; overflow:auto; font-size:12px; line-height:1.45"></div>
+    </div>
 
   <!-- Nhập phản ánh sự cố MobiFiber -->
   <div style="margin-top:6px">
@@ -247,14 +251,14 @@
   
   <!-- Export danh sách cần nâng cấp -->
   <div style="margin-top:6px">
-    <button onclick="exportUpgradeList()" style="width:100%">
+    <button id="exportUpgradeBtn" onclick="exportUpgradeList()" style="width:100%" disabled>
       Xuất danh sách tập điểm cần nâng cấp
     </button>
   </div>
 
   <!-- Export toàn bộ tập điểm ra KML -->
   <div style="margin-top:6px">
-    <button onclick="exportAllCirclesToKML()" style="width:100%">
+    <button id="exportKmlBtn" onclick="exportAllCirclesToKML()" style="width:100%" disabled>
       Xuất toàn bộ tập điểm (*.KML)
     </button>
   </div>
@@ -372,6 +376,7 @@ let isPointDataReady = false;
 let isCustomerDataReady = false;
 let pointByName = new Map();
 let normalizedPointBuckets = new Map();
+let unmatchedCustomers = [];
 
 /* =====================================================
    KHỞI TẠO MAP
@@ -778,10 +783,86 @@ function showCustomer(pointId) {
   el.innerHTML = renderCustomerList(point);
 }
 
+function updateExportButtons() {
+  const disabled = !isPointDataReady || allPoints.length === 0;
+  if (exportUpgradeBtn) exportUpgradeBtn.disabled = disabled;
+  if (exportKmlBtn) exportKmlBtn.disabled = disabled;
+}
+
+function updateCustomerMappingStatus() {
+  if (!customerMappingStatus || !customerMappingSummary || !customerMappingDetails) return;
+
+  if (!isCustomerDataReady) {
+    customerMappingStatus.style.display = "none";
+    customerMappingDetails.style.display = "none";
+    customerMappingDetails.innerHTML = "";
+    return;
+  }
+
+  if (!unmatchedCustomers.length) {
+    customerMappingStatus.style.display = "block";
+    customerMappingStatus.style.background = "#edf7ed";
+    customerMappingStatus.style.borderColor = "#b7dfb9";
+    customerMappingStatus.style.color = "#1f5f2c";
+    customerMappingSummary.textContent = "Tất cả khách hàng đã ghép được với tập điểm.";
+    customerMappingDetails.style.display = "none";
+    customerMappingDetails.innerHTML = "";
+    return;
+  }
+
+  customerMappingStatus.style.display = "block";
+  customerMappingStatus.style.background = "#fff8e1";
+  customerMappingStatus.style.borderColor = "#f0c36d";
+  customerMappingStatus.style.color = "#7a4f01";
+  customerMappingSummary.innerHTML =
+    `Có <b>${unmatchedCustomers.length}</b> khách hàng chưa ghép được với tập điểm.`;
+
+  customerMappingDetails.style.display = "block";
+  customerMappingDetails.innerHTML = unmatchedCustomers
+    .slice(0, 20)
+    .map(item => {
+      const parts = [
+        escapeHtml(item.name || "Chưa có tên"),
+        item.tapDiem ? `Tập điểm sheet KH: ${escapeHtml(item.tapDiem)}` : "",
+        item.address ? `Địa chỉ: ${escapeHtml(item.address)}` : ""
+      ].filter(Boolean);
+
+      return `<div style="margin-bottom:4px">${parts.join(" | ")}</div>`;
+    })
+    .join("");
+
+  if (unmatchedCustomers.length > 20) {
+    customerMappingDetails.innerHTML +=
+      `<div style="margin-top:6px; font-style:italic">Còn ${unmatchedCustomers.length - 20} dòng khác chưa hiển thị.</div>`;
+  }
+}
+
+function highlightCustomerInPopup(point, customer) {
+  showCustomer(point.id);
+
+  const container = document.getElementById(point.customerContainerId);
+  if (!container) return;
+
+  const rows = container.querySelectorAll("table tr");
+  rows.forEach(row => {
+    row.style.background = "";
+    row.style.fontWeight = "";
+  });
+
+  const targetRow = Array.from(rows).find(row => row.innerText.includes(customer.name));
+  if (!targetRow) return;
+
+  targetRow.style.background = "#fff3cd";
+  targetRow.style.fontWeight = "bold";
+  targetRow.scrollIntoView({ block: "nearest" });
+}
+
 /* Load dữ liệu Google Sheet theo header thay vì số thứ tự cột. */
 async function initData() {
   customerInput.disabled = true;
   customerInput.placeholder = "Đang tải dữ liệu khách hàng...";
+  updateExportButtons();
+  updateCustomerMappingStatus();
 
   await loadData();
   await loadCustomerData();
@@ -871,7 +952,9 @@ async function loadData() {
     renderPoints();
     updateEffCounts();
     isPointDataReady = true;
+    updateExportButtons();
   } catch (error) {
+    updateExportButtons();
     alert("Không đọc được dữ liệu Google Sheet (Danh sách tập điểm)");
     console.error("Point sheet error:", error);
   }
@@ -879,6 +962,7 @@ async function loadData() {
 
 async function loadCustomerData() {
   try {
+    unmatchedCustomers = [];
     const rows = await fetchSheetRows({
       gid: CONFIG.SHEET_CUSTOMER_GID,
       sheetName: CONFIG.SHEET_CUSTOMER,
@@ -898,7 +982,14 @@ async function loadCustomerData() {
 
       if (!tapDiem) return;
       const point = resolvePointByTapDiemName(tapDiem);
-      if (!point) return;
+      if (!point) {
+        unmatchedCustomers.push({
+          name,
+          tapDiem,
+          address
+        });
+        return;
+      }
 
       if (!customerByTapDiem[point.id]) {
         customerByTapDiem[point.id] = [];
@@ -919,8 +1010,11 @@ async function loadCustomerData() {
     isCustomerDataReady = true;
     customerInput.disabled = false;
     customerInput.placeholder = "Tìm KH đã bán (gõ tên - địa chỉ)";
+    updateCustomerMappingStatus();
   } catch (error) {
     customerInput.placeholder = "Không tải được dữ liệu KH";
+    isCustomerDataReady = false;
+    updateCustomerMappingStatus();
     alert("Không đọc được dữ liệu Google Sheet (Danh sách khách hàng)");
     console.error("Customer sheet error:", error);
   }
@@ -1146,6 +1240,11 @@ function handleCustomer(lat, lng) {
 
 /* Export danh sách tập điểm cần nâng cấp ra Excel */
 function exportUpgradeList() {
+  if (!isPointDataReady || !allPoints.length) {
+    alert("Dữ liệu tập điểm chưa tải xong. Vui lòng thử lại sau.");
+    return;
+  }
+
   const rows = [[
     'Tên tập điểm',
     'Lat',
@@ -1183,6 +1282,11 @@ function exportUpgradeList() {
 /* Export toàn bộ tập điểm ra file KML
    (chuyển circle Leaflet thành polygon để tương thích Google Earth) */
 function exportAllCirclesToKML() {
+  if (!isPointDataReady || !allPoints.length) {
+    alert("Dữ liệu tập điểm chưa tải xong. Vui lòng thử lại sau.");
+    return;
+  }
+
   let placemarks = "";
 
   allPoints.forEach(p => {
@@ -1259,6 +1363,11 @@ const input = document.getElementById("searchInput");
 const suggestBox = document.getElementById("suggestBox");
 const customerInput = document.getElementById("customerSearchInput");
 const customerSuggestBox = document.getElementById("customerSuggestBox");
+const customerMappingStatus = document.getElementById("customerMappingStatus");
+const customerMappingSummary = document.getElementById("customerMappingSummary");
+const customerMappingDetails = document.getElementById("customerMappingDetails");
+const exportUpgradeBtn = document.getElementById("exportUpgradeBtn");
+const exportKmlBtn = document.getElementById("exportKmlBtn");
 // Timer debounce autocomplete để tránh gọi API liên tục
 let suggestTimer = null;
 
@@ -1461,7 +1570,6 @@ function locateCustomerInTapDiem(customer) {
   }
 
   map.setView([p.lat, p.lng], 16);
-  p.circle.openPopup();
 
   allPoints.forEach(x => {
     x.circle.setStyle({ weight: 2 });
@@ -1473,19 +1581,11 @@ function locateCustomerInTapDiem(customer) {
   const el = p.circle.getElement();
   if (el) el.classList.add("blink");
 
-  setTimeout(() => {
-    showCustomer(p.id);
+  p.circle.once("popupopen", () => {
+    highlightCustomerInPopup(p, customer);
+  });
 
-    const container = document.getElementById(p.customerContainerId);
-    const rows = container ? container.querySelectorAll("table tr") : [];
-
-    rows.forEach(r => {
-      if (r.innerText.includes(customer.name)) {
-        r.style.background = "#fff3cd";
-        r.style.fontWeight = "bold";
-      }
-    });
-  }, 300);
+  p.circle.openPopup();
 }
 
 // Tạo link Google Maps dẫn đường từ vị trí khách hàng tới tập điểm
