@@ -502,6 +502,16 @@ async function initData() {
 
 async function loadData() {
   try {
+    isPointDataReady = false;
+    allPoints.forEach(point => {
+      if (point.circle && map.hasLayer(point.circle)) {
+        map.removeLayer(point.circle);
+      }
+    });
+    allPoints = [];
+    pointByName = new Map();
+    normalizedPointBuckets = new Map();
+
     const rows = await fetchSheetRows({
       gid: CONFIG.SHEET_TAPDIEM_GID,
       sheetName: CONFIG.SHEET_TAPDIEM,
@@ -616,7 +626,15 @@ async function loadCustomerData() {
       const address = getField(row, ["Địa chỉ khách hàng", "Địa chỉ", "Dia chi khach hang", "Dia chi"]);
       const status = getField(row, ["Tình Trạng HĐ", "Tinh Trang HD"]);
 
-      if (!tapDiem) return;
+      if (!tapDiem) {
+        unmatchedCustomers.push({
+          name,
+          tapDiem: "Trống tập điểm",
+          address
+        });
+        return;
+      }
+
       const point = resolvePointByTapDiemName(tapDiem);
       if (!point) {
         unmatchedCustomers.push({
