@@ -190,6 +190,128 @@ function canonicalName(value) {
   return String(value ?? "").trim();
 }
 
+function normalizeAddressQuery(value) {
+  return canonicalName(value)
+    .replace(/\s*,\s*/g, ", ")
+    .replace(/\s+/g, " ");
+}
+
+function ensureVietnamSuffix(value) {
+  const cleaned = normalizeAddressQuery(value);
+  if (!cleaned) return "";
+
+  const normalized = normalizeText(cleaned);
+  if (normalized.includes("viet nam") || normalized.includes("vietnam")) {
+    return cleaned;
+  }
+
+  return `${cleaned}, Việt Nam`;
+}
+
+function simplifyAddressQuery(value) {
+  const cleaned = normalizeAddressQuery(value);
+  if (!cleaned) return "";
+
+  const parts = cleaned.split(",").map(part => part.trim()).filter(Boolean);
+  if (!parts.length) return "";
+
+  const simplifiedFirstPart = parts[0]
+    .replace(/^(so|số)\s+/i, "")
+    .replace(/^[0-9a-zA-Z]+(?:[\/-][0-9a-zA-Z]+)*(?:\s+[0-9a-zA-Z]+(?:[\/-][0-9a-zA-Z]+)*)*\s+/u, "")
+    .trim();
+
+  if (simplifiedFirstPart) {
+    parts[0] = simplifiedFirstPart;
+  }
+
+  return parts.join(", ");
+}
+
+function getPointSearchBounds() {
+  if (!allPoints.length) return null;
+
+  const lats = allPoints.map(point => point.lat);
+  const lngs = allPoints.map(point => point.lng);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const latPad = Math.max((maxLat - minLat) * 0.15, 0.05);
+  const lngPad = Math.max((maxLng - minLng) * 0.15, 0.05);
+
+  return {
+    left: minLng - lngPad,
+    top: maxLat + latPad,
+    right: maxLng + lngPad,
+    bottom: minLat - latPad
+  };
+}
+
+function buildAddressSearchPlan(rawQuery) {
+  const exact = normalizeAddressQuery(rawQuery);
+  const simplified = simplifyAddressQuery(exact);
+  const plan = [];
+
+  const addAttempt = (query, bounded) => {
+    const finalQuery = ensureVietnamSuffix(query);
+    if (!finalQuery) return;
+    if (plan.some(item => item.query === finalQuery && item.bounded === bounded)) return;
+    plan.push({ query: finalQuery, bounded });
+  };
+
+  addAttempt(exact, true);
+  addAttempt(exact, false);
+
+  if (simplified && normalizeText(simplified) !== normalizeText(exact)) {
+    addAttempt(simplified, true);
+    addAttempt(simplified, false);
+  }
+
+  return plan;
+}
+
+function buildNominatimUrl(query, { limit = 5, bounded = false } = {}) {
+  const params = new URLSearchParams({
+    format: "json",
+    limit: String(limit),
+    countrycodes: "vn",
+    addressdetails: "1",
+    q: query
+  });
+
+  if (bounded) {
+    const bounds = getPointSearchBounds();
+    if (bounds) {
+      params.set("viewbox", `${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}`);
+      params.set("bounded", "1");
+    }
+  }
+
+  return `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+}
+
+async function geocodeAddress(rawQuery, limit = 5) {
+  const plan = buildAddressSearchPlan(rawQuery);
+
+  for (const attempt of plan) {
+    const response = await fetch(buildNominatimUrl(attempt.query, {
+      limit,
+      bounded: attempt.bounded
+    }));
+
+    if (!response.ok) {
+      throw new Error(`Nominatim HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (Array.isArray(data) && data.length) {
+      return data;
+    }
+  }
+
+  return [];
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, ch => ({
     "&": "&amp;",
@@ -791,7 +913,7 @@ function applyFilter() {
    TÌM KIẾM KHÁCH HÀNG
    ===================================================== */
 
-function searchLocation() {
+async function searchLocation() {
   if (!isPointDataReady) {
     alert("Dữ liệu tập điểm đang tải, vui lòng thử lại sau.");
     return;
@@ -807,21 +929,18 @@ function searchLocation() {
     return;
   }
 
-  // Tìm theo địa chỉ (Nominatim)
-  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}`)
-    .then(r => r.json())
-    .then(r => {
-      if (!r[0]) {
-        alert("Không tìm thấy địa chỉ cần tìm.");
-        return;
-      }
+  try {
+    const results = await geocodeAddress(val, 1);
+    if (!results[0]) {
+      alert("Không tìm thấy địa chỉ cần tìm.");
+      return;
+    }
 
-      handleCustomer(+r[0].lat, +r[0].lon);
-    })
-    .catch(err => {
-      console.error("Search location error:", err);
-      alert("Không tìm được địa chỉ. Vui lòng kiểm tra kết nối mạng.");
-    });
+    handleCustomer(+results[0].lat, +results[0].lon);
+  } catch (err) {
+    console.error("Search location error:", err);
+    alert("Không tìm được địa chỉ. Vui lòng kiểm tra kết nối mạng.");
+  }
 
   collapseControlBox();
 }
@@ -1116,36 +1235,34 @@ input.addEventListener("input", () => {
   }
 
   clearTimeout(suggestTimer);
-  suggestTimer = setTimeout(() => {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`)
-      .then(r => r.json())
-      .then(data => {
-        suggestBox.innerHTML = "";
-        if (!data.length) {
-          suggestBox.style.display = "none";
-          return;
-        }
-
-        data.forEach(item => {
-          const div = document.createElement("div");
-          div.className = "suggest-item";
-          div.textContent = item.display_name;
-
-          div.onclick = () => {
-            input.value = item.display_name;
-            suggestBox.style.display = "none";
-            handleCustomer(+item.lat, +item.lon);
-          };
-
-          suggestBox.appendChild(div);
-        });
-
-        suggestBox.style.display = "block";
-      })
-      .catch(err => {
-        console.error("Suggest error:", err);
+  suggestTimer = setTimeout(async () => {
+    try {
+      const data = await geocodeAddress(q, 5);
+      suggestBox.innerHTML = "";
+      if (!data.length) {
         suggestBox.style.display = "none";
+        return;
+      }
+
+      data.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "suggest-item";
+        div.textContent = item.display_name;
+
+        div.onclick = () => {
+          input.value = item.display_name;
+          suggestBox.style.display = "none";
+          handleCustomer(+item.lat, +item.lon);
+        };
+
+        suggestBox.appendChild(div);
       });
+
+      suggestBox.style.display = "block";
+    } catch (err) {
+      console.error("Suggest error:", err);
+      suggestBox.style.display = "none";
+    }
   }, 300);
 });
 
