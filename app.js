@@ -812,7 +812,7 @@ async function loadCustomerData() {
 
     isCustomerDataReady = true;
     customerInput.disabled = false;
-    customerInput.placeholder = "Tìm KH đã bán (gõ tên - địa chỉ)";
+    customerInput.placeholder = "Tìm khách hàng đã bán (gõ tên/địa chỉ)";
     updateUnmatchedExportButton();
   } catch (error) {
     customerInput.placeholder = "Không tải được dữ liệu KH";
