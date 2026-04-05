@@ -34,7 +34,7 @@
 
     <!-- Ô nhập vị trí khách hàng: gõ tọa độ / địa chỉ hoặc tự động fill khi double-click trên bản đồ -->
     <div class="search-row" style="position:relative">
-      <input id="searchInput" placeholder="Nhấp đúp lên bản đồ hoặc gõ tọa độ, địa chỉ">
+      <input id="searchInput" placeholder="Click đúp lên map/gõ tọa độ, địa chỉ">
       <button onclick="searchLocation()">Tìm</button>
       <!-- Hộp gợi ý địa chỉ từ dịch vụ Nominatim -->
       <div id="suggestBox" class="suggest-box"></div>
@@ -73,7 +73,7 @@
 
   <div style="margin-top:6px">
     <button id="exportUnmatchedCustomersBtn" onclick="exportUnmatchedCustomers()" style="width:100%" disabled>
-      Xuất danh sách khách hàng chưa ghép được với tập điểm
+      Xuất DS KH chưa xác định được tập điểm
     </button>
   </div>
 
@@ -112,7 +112,7 @@
       
       <label>
         <input type="checkbox" class="eff-filter" value="gte100" checked>
-        ≥ 100% Đầy tải (số lượng: <span id="cnt-gte100">0</span>)
+        ≥ 100% (số lượng: <span id="cnt-gte100">0</span>)
       </label>
     </div>
   </div>
@@ -133,7 +133,7 @@
     <span class="col">🔴 80–&lt;100%</span>
   </div>
   <div>
-    <span class="col">⚫ ≥100% Đầy tải</span>
+    <span class="col">⚫ ≥100%</span>
   </div>
 </div>
 
