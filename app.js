@@ -460,7 +460,7 @@ function updateExportButtons() {
 
 function updateUnmatchedExportButton() {
   if (!exportUnmatchedCustomersBtn) return;
-  exportUnmatchedCustomersBtn.disabled = !isCustomerDataReady;
+  exportUnmatchedCustomersBtn.disabled = !isCustomerDataReady || unmatchedCustomers.length === 0;
 }
 
 function highlightCustomerInPopup(point, customer) {
@@ -596,6 +596,8 @@ async function loadData() {
 
 async function loadCustomerData() {
   try {
+    customerByTapDiem = {};
+    customerSearchList = [];
     unmatchedCustomers = [];
     const rows = await fetchSheetRows({
       gid: CONFIG.SHEET_CUSTOMER_GID,
@@ -648,6 +650,10 @@ async function loadCustomerData() {
     updateUnmatchedExportButton();
   } catch (error) {
     customerInput.placeholder = "Không tải được dữ liệu KH";
+    customerInput.disabled = true;
+    customerByTapDiem = {};
+    customerSearchList = [];
+    unmatchedCustomers = [];
     isCustomerDataReady = false;
     updateUnmatchedExportButton();
     alert("Không đọc được dữ liệu Google Sheet (Danh sách khách hàng)");
@@ -979,6 +985,11 @@ function exportAllCirclesToKML() {
 function exportUnmatchedCustomers() {
   if (!isCustomerDataReady) {
     alert("Dữ liệu khách hàng chưa tải xong. Vui lòng thử lại sau.");
+    return;
+  }
+
+  if (!unmatchedCustomers.length) {
+    alert("Không có khách hàng nào chưa ghép được với tập điểm.");
     return;
   }
 
