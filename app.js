@@ -646,6 +646,9 @@ async function loadCustomerData() {
       const tapDiem = getField(row, ["Tap Diem/Tram Ket noi", "Tập điểm/Trạm Kết nối"]);
       const address = getField(row, ["Địa chỉ khách hàng", "Địa chỉ", "Dia chi khach hang", "Dia chi"]);
       const status = getField(row, ["Tình Trạng HĐ", "Tinh Trang HD"]);
+      const hasCustomerInfo = Boolean(canonicalName(name) || canonicalName(address));
+
+      if (!hasCustomerInfo) return;
 
       if (!tapDiem) {
         unmatchedCustomers.push({
