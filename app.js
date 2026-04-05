@@ -865,7 +865,7 @@ function handleCustomer(lat, lng) {
     // Vẽ đường nối khách hàng → tập điểm
     const line = L.polyline(
       [[lat, lng], [p.lat, p.lng]],
-      { color: 'green', dashArray: '5,5' }
+      { color: i === 0 ? 'red' : 'green', dashArray: '5,5' }
     ).addTo(map);
 
     // Hiển thị khoảng cách
