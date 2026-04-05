@@ -12,12 +12,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <!-- =========================
-       GOOGLE VISUALIZATION
-       Dùng để đọc dữ liệu Google Sheet
-       ========================= -->
-  <script src="https://www.gstatic.com/charts/loader.js"></script>
-
-  <!-- =========================
        SHEETJS
        Dùng export Excel cho kỹ thuật
        ========================= -->
@@ -340,6 +334,7 @@
 const CONFIG = {
   SHEET_ID: '1AkswJCHRClc7wAoagpRqtrG9OATm5_6qsRK0gTHZqcY',
   SHEET_TAPDIEM: 'Danh sách tập điểm S2',
+  SHEET_TAPDIEM_GID: '1472299907',
   SHEET_CUSTOMER: 'Danh sách khách hàng'
 };
 
@@ -370,6 +365,10 @@ let isInitialLoad = true;
 
 // Marker vị trí khách hàng khi double-click trên map
 let clickMarker = null;
+
+// Trang thai tai du lieu
+let isPointDataReady = false;
+let isCustomerDataReady = false;
 
 /* =====================================================
    KHỞI TẠO MAP
@@ -482,12 +481,218 @@ function circleToPolygon(lat, lng, radiusMeters, points = 60) {
   return coords.join(" ");
 }
 
+function normalizeText(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeHeader(value) {
+  return normalizeText(value)
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function normalizeKey(value) {
+  return normalizeText(value).replace(/\s+/g, "");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[ch]));
+}
+
+function escapeXml(value) {
+  return String(value ?? "").replace(/[<>&'"]/g, ch => ({
+    "<": "&lt;",
+    ">": "&gt;",
+    "&": "&amp;",
+    "'": "&apos;",
+    '"': "&quot;"
+  }[ch]));
+}
+
+function makeSafeId(prefix, value) {
+  const normalized = normalizeHeader(value) || "item";
+  return `${prefix}-${normalized}`;
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (ch === '"') {
+      if (inQuotes && next === '"') {
+        field += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (ch === "," && !inQuotes) {
+      row.push(field);
+      field = "";
+      continue;
+    }
+
+    if ((ch === "\n" || ch === "\r") && !inQuotes) {
+      if (ch === "\r" && next === "\n") i++;
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+      continue;
+    }
+
+    field += ch;
+  }
+
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function rowsToObjects(csvRows) {
+  if (!csvRows.length) return [];
+
+  const headers = csvRows[0].map(h => h.trim());
+  return csvRows.slice(1).map(row => {
+    const obj = {};
+    headers.forEach((header, index) => {
+      obj[header] = row[index] ?? "";
+    });
+    return obj;
+  });
+}
+
+function getField(row, aliases) {
+  const aliasList = Array.isArray(aliases) ? aliases : [aliases];
+  const entries = Object.entries(row);
+
+  for (const alias of aliasList) {
+    const target = normalizeHeader(alias);
+    const direct = entries.find(([key]) => normalizeHeader(key) === target);
+    if (direct) return direct[1];
+  }
+
+  return "";
+}
+
+function toNumber(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return NaN;
+
+  const cleaned = raw
+    .replace(/\s+/g, "")
+    .replace(/%/g, "")
+    .replace(/\.(?=.*\.)/g, "")
+    .replace(",", ".");
+
+  return Number(cleaned);
+}
+
+function toPercentRatio(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return NaN;
+
+  const numeric = toNumber(raw);
+  if (!Number.isFinite(numeric)) return NaN;
+  if (raw.includes("%")) return numeric / 100;
+  return numeric > 1 ? numeric / 100 : numeric;
+}
+
+async function fetchSheetRows({ gid, sheetName, preferExport = false }) {
+  const exportUrl = gid
+    ? `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/export?format=csv&gid=${gid}`
+    : null;
+  const gvizCsvUrl = sheetName
+    ? `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`
+    : null;
+
+  const urls = preferExport
+    ? [exportUrl, gvizCsvUrl].filter(Boolean)
+    : [gvizCsvUrl, exportUrl].filter(Boolean);
+
+  let lastError = null;
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const text = await response.text();
+      return rowsToObjects(parseCsv(text));
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error("Khong doc duoc du lieu");
+}
+
+function buildBasePopup(point) {
+  const directionHtml = customerLatLng
+    ? renderDirection(point.lat, point.lng)
+    : `<i style="color:#999">Chua lay duoc vi tri khach hang</i>`;
+
+  return `
+    <b>${escapeHtml(point.name)}</b><br>
+
+    <b>Toa do:</b>
+    <a href="https://www.google.com/maps?q=${point.lat},${point.lng}" target="_blank" rel="noopener">
+      ${point.lat.toFixed(6)}, ${point.lng.toFixed(6)}
+    </a><br>
+
+    <b>Dan duong:</b>
+    <span class="direction-holder" data-lat="${point.lat}" data-lng="${point.lng}">
+      ${directionHtml}
+    </span><br>
+
+    <b>Dung luong:</b> ${escapeHtml(point.maxPort)} Port<br>
+    <b>Da dung:</b> ${escapeHtml(point.usedPort)}<br>
+    <b>Con lai:</b> ${escapeHtml(point.freePort)}<br>
+    <b>Hieu suat:</b> ${(point.eff * 100).toFixed(1)}%
+    <hr>
+
+    <a href="#" class="show-customer-link" data-point-id="${point.id}">
+      Xem danh sach khach hang hien tai
+    </a>
+
+    <div id="${point.customerContainerId}" style="margin-top:6px"></div>
+  `;
+}
+
 // Render danh sách khách hàng thuộc một tập điểm (dùng trong popup)
-function renderCustomerList(tapDiemName) {
-  const list = customerByTapDiem[tapDiemName] || [];
+function renderCustomerList(point) {
+  const list = customerByTapDiem[point.key] || [];
+
+  if (!isCustomerDataReady) {
+    return `<i>Dang tai du lieu khach hang...</i>`;
+  }
 
   if (!list.length) {
-    return `<i>Không có khách hàng trong tập điểm này</i>`;
+    return `<i>Khong co khach hang trong tap diem nay</i>`;
   }
 
   let html = `
@@ -501,13 +706,13 @@ function renderCustomerList(tapDiemName) {
   `;
 
   list.forEach(c => {
-    const isNormal = c.status === 'Hoạt động bình thường';
+    const isNormal = normalizeText(c.status) === normalizeText('Hoạt động bình thường');
   
     html += `
       <tr style="${isNormal ? '' : 'background:#ffe6e6; color:#b30000;'}">
-        <td>${c.name || ''}</td>
-        <td>${c.address || ''}</td>
-        <td>${c.status || ''}</td>
+        <td>${escapeHtml(c.name || '')}</td>
+        <td>${escapeHtml(c.address || '')}</td>
+        <td>${escapeHtml(c.status || '')}</td>
       </tr>
     `;
   });
@@ -517,49 +722,60 @@ function renderCustomerList(tapDiemName) {
 }
 
 // Hiển thị danh sách khách hàng trong popup tập điểm
-function showCustomer(tapDiemName) {
-  const el = document.getElementById(`customer-${tapDiemName}`);
+function showCustomer(pointId) {
+  const point = allPoints.find(item => item.id === pointId);
+  if (!point) return;
+
+  const el = document.getElementById(point.customerContainerId);
   if (!el) return;
-  el.innerHTML = renderCustomerList(tapDiemName);
+  el.innerHTML = renderCustomerList(point);
 }
 
-/* Load dữ liệu Google Sheet:
-   - loadData(): danh sách tập điểm
-   - loadCustomerData(): danh sách khách hàng, gắn theo tên tập điểm */
+/* Load dữ liệu Google Sheet theo header thay vì số thứ tự cột. */
+async function initData() {
+  customerInput.disabled = true;
+  customerInput.placeholder = "Dang tai du lieu khach hang...";
 
-google.charts.load('current', { packages: ['corechart'] });
-google.charts.setOnLoadCallback(() => {
-  loadData();
-  loadCustomerData();
-});
+  await Promise.all([loadData(), loadCustomerData()]);
+}
 
-/* Đọc dữ liệu từ Google Sheet */
-function loadData() {
-  const query = new google.visualization.Query(
-    `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CONFIG.SHEET_TAPDIEM)}`
-  );
+async function loadData() {
+  try {
+    const rows = await fetchSheetRows({
+      gid: CONFIG.SHEET_TAPDIEM_GID,
+      sheetName: CONFIG.SHEET_TAPDIEM,
+      preferExport: true
+    });
 
-  query.send(res => {
-    // KIỂM TRA LỖI GOOGLE SHEET
-    if (res.isError()) {
-      alert("❌ Không đọc được dữ liệu Google Sheet (Danh sách tập điểm)");
-      console.error("Google Sheet error:", res.getMessage(), res.getDetailedMessage());
-      return;
-    }
-    const data = res.getDataTable();
+    rows.forEach(row => {
+      const name = getField(row, ["Tên tập điểm S2", "Ten tap diem S2"]);
+      if (!name || normalizeText(name) === normalizeText("Tổng")) return;
 
-    // Mapping cột Sheet "Danh sách tập điểm S2":
-    // [2] Tên tập điểm | [3] Tổng port | [4] Port đã dùng
-    // [5] Port còn lại | [7] Hiệu suất | [9][10] Tọa độ
-    for (let i = 0; i < data.getNumberOfRows(); i++) {
-      const lat = Number(data.getValue(i, 9));
-      const lng = Number(data.getValue(i, 10));
-      if (!validateLatLng(lat, lng)) continue;
+      const lat = toNumber(getField(row, "Lat"));
+      const lng = toNumber(getField(row, ["Long", "Lng"]));
+      if (!validateLatLng(lat, lng)) return;
 
-      const eff = Number(data.getValue(i, 7));
+      const eff = toPercentRatio(getField(row, ["Hiệu suất sử dụng", "Hieu suat su dung"]));
+      if (!Number.isFinite(eff)) return;
 
-      // Vẽ vòng tròn tập điểm
-      const circle = L.circle([lat, lng], {
+      const maxPort = getField(row, ["Dung lượng S2", "Dung luong S2"]) || "0";
+      const usedPort = getField(row, ["Port đã dùng", "Port da dung"]) || "0";
+      const freePort = getField(row, ["Port còn lại", "Port còn lại ", "Port con lai"]) || "0";
+
+      const point = {
+        id: makeSafeId("point", name),
+        key: normalizeKey(name),
+        name,
+        maxPort,
+        usedPort,
+        freePort,
+        eff,
+        lat,
+        lng,
+        customerContainerId: makeSafeId("customer", name)
+      };
+
+      point.circle = L.circle([lat, lng], {
         radius: 220,
         color: getColor(eff),
         fillColor: getColor(eff),
@@ -567,112 +783,89 @@ function loadData() {
         weight: 2
       });
 
-      // Popup thông tin tập điểm FTTH
-      const basePopup = `
-        <b>${data.getValue(i, 2)}</b><br>
-      
-        <b>Tọa độ:</b>
-        <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank">
-          ${lat.toFixed(6)}, ${lng.toFixed(6)}
-        </a><br>
-      
-        <b>Dẫn đường:</b>
-        <span class="direction-holder" data-lat="${lat}" data-lng="${lng}">
-        <i style="color:#999">Chưa lấy được vị trí khách hàng</i>
-        </span><br>
-      
-        <b>Dung lượng:</b> ${data.getValue(i, 3)} Port<br>
-        <b>Đã dùng:</b> ${data.getValue(i, 4)}<br>
-        <b>Còn lại:</b> ${data.getValue(i, 5)}<br>
-        <b>Hiệu suất:</b> ${(eff * 100).toFixed(1)}%
-        <hr>
-      
-        <a href="#" onclick="event.preventDefault(); showCustomer('${data.getValue(i, 2)}')">
-          📋 Xem danh sách khách hàng hiện tại
-        </a>
-      
-        <div id="customer-${data.getValue(i, 2)}" style="margin-top:6px"></div>
-      `;
-      
-      circle.bindPopup(basePopup);
+      point.basePopup = buildBasePopup(point);
+      point.circle.bindPopup(point.basePopup);
 
-      circle.on("popupopen", e => {
+      point.circle.on("popupopen", e => {
         const popupEl = e.popup.getElement();
         if (!popupEl) return;
-      
+
         const holder = popupEl.querySelector(".direction-holder");
-        if (!holder) return;
-      
-        const lat = holder.dataset.lat;
-        const lng = holder.dataset.lng;
-      
-        holder.innerHTML = renderDirection(lat, lng);
+        if (holder) {
+          holder.innerHTML = customerLatLng
+            ? renderDirection(holder.dataset.lat, holder.dataset.lng)
+            : `<i style="color:#999">Chua lay duoc vi tri khach hang</i>`;
+        }
+
+        const trigger = popupEl.querySelector(".show-customer-link");
+        if (trigger) {
+          trigger.onclick = event => {
+            event.preventDefault();
+            showCustomer(trigger.dataset.pointId);
+          };
+        }
       });
 
-      // Lưu thông tin tập điểm
-      allPoints.push({
-        name: data.getValue(i, 2),
-        maxPort: data.getValue(i, 3),
-        usedPort: data.getValue(i, 4),
-        freePort: data.getValue(i, 5),
-        eff, lat, lng,
-        circle,
-        basePopup   // ⭐ LƯU POPUP GỐC
-      });
-    }
+      allPoints.push(point);
+    });
+
     renderPoints();
     updateEffCounts();
-  });
+    isPointDataReady = true;
+  } catch (error) {
+    alert("Khong doc duoc du lieu Google Sheet (Danh sach tap diem)");
+    console.error("Point sheet error:", error);
+  }
 }
 
-function loadCustomerData() {
-  const query = new google.visualization.Query(
-    `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?sheet=${encodeURIComponent(CONFIG.SHEET_CUSTOMER)}`
-  );
+async function loadCustomerData() {
+  try {
+    const rows = await fetchSheetRows({
+      sheetName: CONFIG.SHEET_CUSTOMER
+    });
 
-  query.send(res => {
-    // KIỂM TRA LỖI GOOGLE SHEET
-    if (res.isError()) {
-      alert("❌ Không đọc được dữ liệu Google Sheet (Danh sách tập điểm)");
-      console.error("Google Sheet error:", res.getMessage(), res.getDetailedMessage());
-      return;
-    }
-    const data = res.getDataTable();
+    rows.forEach(row => {
+      const name = getField(row, ["Tên khách hàng", "Tên KHG", "Ten khach hang", "Ten KHG"]);
+      const tapDiem = getField(row, ["Tap Diem/Tram Ket noi", "Tập điểm/Trạm Kết nối"]);
+      const address = getField(row, ["Địa chỉ khách hàng", "Địa chỉ", "Dia chi khach hang", "Dia chi"]);
+      const status = getField(row, ["Tình Trạng HĐ", "Tinh Trang HD"]);
 
-    for (let i = 0; i < data.getNumberOfRows(); i++) {
-      const tenKH   = data.getValue(i, 5);   // Cột F
-      const tapDiem = data.getValue(i, 13);  // Cột N
-      const diaChi  = data.getValue(i, 8);   // Cột I
-      const status  = data.getValue(i, 15);  // Cột P
+      if (!tapDiem) return;
 
-      if (!tapDiem) continue;
+      const tapDiemKey = normalizeKey(tapDiem);
+      if (!tapDiemKey) return;
 
-      if (!customerByTapDiem[tapDiem]) {
-        customerByTapDiem[tapDiem] = [];
+      if (!customerByTapDiem[tapDiemKey]) {
+        customerByTapDiem[tapDiemKey] = [];
       }
 
-      customerByTapDiem[tapDiem].push({
-        name: tenKH,
-        address: diaChi,
+      const customer = {
+        name,
+        address,
+        tapDiem,
+        tapDiemKey,
         status
-      });
-      
-      customerSearchList.push({
-        name: tenKH,
-        address: diaChi,
-        tapDiem: tapDiem,
-        status: status
-      });
-    }
-    // console.log("Đã load danh sách KH theo tập điểm", customerByTapDiem);
-  });
+      };
+
+      customerByTapDiem[tapDiemKey].push(customer);
+      customerSearchList.push(customer);
+    });
+
+    isCustomerDataReady = true;
+    customerInput.disabled = false;
+    customerInput.placeholder = "Tim KH da ban (go ten - dia chi)";
+  } catch (error) {
+    customerInput.placeholder = "Khong tai duoc du lieu KH";
+    alert("Khong doc duoc du lieu Google Sheet (Danh sach khach hang)");
+    console.error("Customer sheet error:", error);
+  }
 }
 
 // Lấy danh sách tên tập điểm đang được hiển thị trên map (phục vụ lọc KH)
 function getVisibleTapDiemNames() {
   return allPoints
     .filter(p => map.hasLayer(p.circle))
-    .map(p => p.name);
+    .map(p => p.key);
 }
   
 /* =====================================================
@@ -755,6 +948,11 @@ function applyFilter() {
    ===================================================== */
 
 function searchLocation() {
+  if (!isPointDataReady) {
+    alert("Du lieu tap diem dang tai, vui long thu lai sau.");
+    return;
+  }
+
   const val = searchInput.value.trim();
   if (!val) return;
 
@@ -768,7 +966,18 @@ function searchLocation() {
   // Tìm theo địa chỉ (Nominatim)
   fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}`)
     .then(r => r.json())
-    .then(r => r[0] && handleCustomer(+r[0].lat, +r[0].lon));
+    .then(r => {
+      if (!r[0]) {
+        alert("Khong tim thay dia chi can tim.");
+        return;
+      }
+
+      handleCustomer(+r[0].lat, +r[0].lon);
+    })
+    .catch(err => {
+      console.error("Search location error:", err);
+      alert("Khong tim duoc dia chi. Vui long kiem tra ket noi mang.");
+    });
 
   collapseControlBox();
 }
@@ -784,6 +993,11 @@ Xử lý khi xác định vị trí khách hàng:
 - Highlight, vẽ đường và hiển thị gợi ý
 */
 function handleCustomer(lat, lng) {
+  if (!isPointDataReady) {
+    alert("Du lieu tap diem dang tai, vui long thu lai sau.");
+    return;
+  }
+
   customerLatLng = { lat, lng };
   // Xóa marker & layer cũ
   if (customerMarker) map.removeLayer(customerMarker);
@@ -805,26 +1019,26 @@ function handleCustomer(lat, lng) {
   // ===============================
   // Kiểm tra khoảng cách tới tập điểm gần nhất ≤ 1km
   // ===============================
-  const nearestPoint = allPoints
+  const candidates = allPoints
+    .filter(p => Number(p.freePort) > 0)
     .map(p => ({ ...p, dist: haversine(lat, lng, p.lat, p.lng) }))
+    .sort((a, b) => a.dist - b.dist || a.eff - b.eff);
+
+  const nearestPoint = candidates
     .sort((a, b) => a.dist - b.dist)[0];
   
   if (!nearestPoint || nearestPoint.dist > 1000) {
     alert(
-      `❌ Không khả thi để bán hàng\n` +
-      `Tập điểm gần nhất cách ${Math.round(nearestPoint?.dist || 0)} m`
+      `Khong kha thi de ban hang\n` +
+      `Tap diem con port gan nhat cach ${Math.round(nearestPoint?.dist || 0)} m`
     );
     return;
   }
 
   // Chọn 3 tập điểm gần nhất còn port trống
-  const candidates = allPoints
-    .filter(p => p.freePort > 0)
-    .map(p => ({ ...p, dist: haversine(lat, lng, p.lat, p.lng) }))
-    .sort((a, b) => a.dist - b.dist || a.eff - b.eff)
-    .slice(0, 3);
+  const topCandidates = candidates.slice(0, 3);
 
-  candidates.forEach((p, i) => {
+  topCandidates.forEach((p, i) => {
     const el = p.circle.getElement();
     if (el) el.classList.add('blink');
 
@@ -845,7 +1059,7 @@ function handleCustomer(lat, lng) {
     // Popup chi tiết tập điểm gợi ý quanh vị trí khách hàng
     const bestBadge =
       i === 0
-        ? '<b style="color:green">⭐ TẬP ĐIỂM TỐT NHẤT</b>'
+        ? '<b style="color:green">Tap diem goi y tot nhat</b>'
         : '';
     
     const suggestPopup = `
@@ -912,17 +1126,17 @@ function exportAllCirclesToKML() {
 
     const description = `
       <![CDATA[
-        <b>${p.name}</b><br>
-        Dung lượng (Port): ${p.maxPort}<br>
-        Đã dùng: ${p.usedPort}<br>
-        Còn lại: ${p.freePort}<br>
+        <b>${escapeHtml(p.name)}</b><br>
+        Dung lượng (Port): ${escapeHtml(p.maxPort)}<br>
+        Đã dùng: ${escapeHtml(p.usedPort)}<br>
+        Còn lại: ${escapeHtml(p.freePort)}<br>
         Hiệu suất: ${(p.eff * 100).toFixed(1)}%
       ]]>
     `;
 
     placemarks += `
       <Placemark>
-        <name>${p.name}</name>
+        <name>${escapeXml(p.name)}</name>
         <description>${description}</description>
         <Style>
           <PolyStyle>
@@ -983,6 +1197,8 @@ const customerSuggestBox = document.getElementById("customerSuggestBox");
 // Timer debounce autocomplete để tránh gọi API liên tục
 let suggestTimer = null;
 
+initData();
+
 /* Autocomplete địa chỉ */
 input.addEventListener("input", () => {
   const q = input.value.trim();
@@ -1024,11 +1240,20 @@ input.addEventListener("input", () => {
         });
 
         suggestBox.style.display = "block";
+      })
+      .catch(err => {
+        console.error("Suggest error:", err);
+        suggestBox.style.display = "none";
       });
   }, 300);
 });
 
 customerInput.addEventListener("input", () => {
+  if (!isCustomerDataReady) {
+    customerSuggestBox.style.display = "none";
+    return;
+  }
+
   const q = customerInput.value.trim().toLowerCase();
   customerSuggestBox.innerHTML = "";
 
@@ -1041,7 +1266,7 @@ customerInput.addEventListener("input", () => {
 
   const matches = customerSearchList
     .filter(c =>
-      visibleTapDiems.includes(c.tapDiem) &&
+      visibleTapDiems.includes(c.tapDiemKey) &&
       (
         (c.name && c.name.toLowerCase().includes(q)) ||
         (c.address && c.address.toLowerCase().includes(q))
@@ -1057,7 +1282,10 @@ customerInput.addEventListener("input", () => {
   matches.forEach(c => {
     const div = document.createElement("div");
     div.className = "suggest-item";
-    div.innerHTML = `<b>${c.name}</b> – ${c.address || ''}`;
+    const strong = document.createElement("strong");
+    strong.textContent = c.name || "(Khong co ten)";
+    div.appendChild(strong);
+    div.appendChild(document.createTextNode(` - ${c.address || ''}`));
 
     div.onclick = () => {
       customerInput.value = `${c.name} - ${c.address || ''}`;
@@ -1161,7 +1389,7 @@ function collapseControlBox() {
 // Highlight tập điểm và khách hàng tương ứng trong danh sách
 function locateCustomerInTapDiem(customer) {
   // customerLatLng = null;
-  const p = allPoints.find(tp => tp.name === customer.tapDiem);
+  const p = allPoints.find(tp => tp.key === customer.tapDiemKey);
   if (!p) {
     alert("Không tìm thấy tập điểm của khách hàng");
     return;
@@ -1181,11 +1409,10 @@ function locateCustomerInTapDiem(customer) {
   if (el) el.classList.add("blink");
 
   setTimeout(() => {
-    showCustomer(p.name);
+    showCustomer(p.id);
 
-    const rows = document.querySelectorAll(
-      `#customer-${p.name} table tr`
-    );
+    const container = document.getElementById(p.customerContainerId);
+    const rows = container ? container.querySelectorAll("table tr") : [];
 
     rows.forEach(r => {
       if (r.innerText.includes(customer.name)) {
@@ -1227,7 +1454,7 @@ fetch(
   + "?url=" + encodeURIComponent(window.location.href)
   + "&v=1",
   { mode: "no-cors" }
-);
+).catch(err => console.error("Tracking error:", err));
 </script>
 </body>
 </html>
