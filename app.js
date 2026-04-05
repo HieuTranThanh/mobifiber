@@ -2,14 +2,8 @@
    BIẾN TOÀN CỤC & CẤU HÌNH
    ===================================================== */
 
-// Link Google Sheet và tên sheet dữ liệu
-const CONFIG = {
-  SHEET_ID: '1AkswJCHRClc7wAoagpRqtrG9OATm5_6qsRK0gTHZqcY',
-  SHEET_TAPDIEM: 'Danh sách tập điểm S2',
-  SHEET_TAPDIEM_GID: '1472299907',
-  SHEET_CUSTOMER: 'Danh sách khách hàng',
-  SHEET_CUSTOMER_GID: '341989509'
-};
+// Cấu hình tập trung để dễ chỉnh khi đổi nguồn dữ liệu hoặc rule nghiệp vụ.
+const CONFIG = window.APP_CONFIG || {};
 
 // Đối tượng map Leaflet
 let map;
@@ -559,7 +553,7 @@ async function loadData() {
       };
 
       point.circle = L.circle([lat, lng], {
-        radius: 220,
+        radius: CONFIG.POINT_RADIUS_METERS,
         color: getColor(eff),
         fillColor: getColor(eff),
         fillOpacity: 0.5,
@@ -630,7 +624,8 @@ async function loadCustomerData() {
         unmatchedCustomers.push({
           name,
           tapDiem: "Trống tập điểm",
-          address
+          address,
+          reason: "Thiếu tên tập điểm trên sheet khách hàng"
         });
         return;
       }
@@ -640,7 +635,8 @@ async function loadCustomerData() {
         unmatchedCustomers.push({
           name,
           tapDiem,
-          address
+          address,
+          reason: "Không tìm thấy tập điểm tương ứng trên sheet tập điểm"
         });
         return;
       }
@@ -845,7 +841,7 @@ function handleCustomer(lat, lng) {
   const nearestPoint = candidates
     .sort((a, b) => a.dist - b.dist)[0];
   
-  if (!nearestPoint || nearestPoint.dist > 1000) {
+  if (!nearestPoint || nearestPoint.dist > CONFIG.MAX_SALE_DISTANCE_METERS) {
     alert(
       `Không khả thi để bán hàng\n` +
       `Tập điểm còn port gần nhất cách ${Math.round(nearestPoint?.dist || 0)} m`
@@ -854,7 +850,7 @@ function handleCustomer(lat, lng) {
   }
 
   // Chọn 3 tập điểm gần nhất còn port trống
-  const topCandidates = candidates.slice(0, 3);
+  const topCandidates = candidates.slice(0, CONFIG.MAX_SUGGESTED_POINTS);
 
   topCandidates.forEach((p, i) => {
     const el = p.circle.getElement();
@@ -949,7 +945,7 @@ function exportAllCirclesToKML() {
   let placemarks = "";
 
   allPoints.forEach(p => {
-    const polygon = circleToPolygon(p.lat, p.lng, 220);
+    const polygon = circleToPolygon(p.lat, p.lng, CONFIG.POINT_RADIUS_METERS);
     const color = colorToKML(getColor(p.eff));
 
     const description = `
@@ -1014,14 +1010,16 @@ function exportUnmatchedCustomers() {
   const rows = [[
     "Tên khách hàng",
     "Tập điểm trên sheet khách hàng",
-    "Địa chỉ"
+    "Địa chỉ",
+    "Lý do"
   ]];
 
   unmatchedCustomers.forEach(item => {
     rows.push([
       item.name || "",
       item.tapDiem || "",
-      item.address || ""
+      item.address || "",
+      item.reason || ""
     ]);
   });
 
@@ -1056,8 +1054,15 @@ const customerSuggestBox = document.getElementById("customerSuggestBox");
 const exportUpgradeBtn = document.getElementById("exportUpgradeBtn");
 const exportKmlBtn = document.getElementById("exportKmlBtn");
 const exportUnmatchedCustomersBtn = document.getElementById("exportUnmatchedCustomersBtn");
+const feedbackBtn = document.getElementById("feedbackBtn");
 // Timer debounce autocomplete để tránh gọi API liên tục
 let suggestTimer = null;
+
+if (feedbackBtn) {
+  feedbackBtn.addEventListener("click", () => {
+    window.open(CONFIG.FEEDBACK_FORM_URL, "_blank");
+  });
+}
 
 initData();
 
