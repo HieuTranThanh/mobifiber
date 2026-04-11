@@ -768,11 +768,14 @@ async function loadCustomerData() {
       const tapDiem = getField(row, ["Tap Diem/Tram Ket noi", "Tập điểm/Trạm Kết nối"]);
       const address = getField(row, ["Địa chỉ khách hàng", "Địa chỉ", "Dia chi khach hang", "Dia chi"]);
       const status = getField(row, ["Tình Trạng HĐ", "Tinh Trang HD"]);
+      const serviceType = getField(row, ["Loại dịch vụ", "Loai dich vu", "Dịch vụ", "Dich vu"]);
       const hasCustomerInfo = Boolean(canonicalName(name) || canonicalName(address));
+      const isGponService = normalizeText(serviceType) === "gpon";
 
       if (!hasCustomerInfo) return;
 
       if (!tapDiem) {
+        if (!isGponService) return;
         unmatchedCustomers.push({
           name,
           tapDiem: "Trống tập điểm",
@@ -784,6 +787,7 @@ async function loadCustomerData() {
 
       const point = resolvePointByTapDiemName(tapDiem);
       if (!point) {
+        if (!isGponService) return;
         unmatchedCustomers.push({
           name,
           tapDiem,
@@ -1036,6 +1040,8 @@ function handleCustomer(lat, lng) {
 
     suggestionLayers.push(line);
   });
+
+  collapseControlBox();
 }
 
 /* =====================================================
@@ -1435,6 +1441,7 @@ function locateCustomerInTapDiem(customer) {
   });
 
   p.circle.openPopup();
+  collapseControlBox();
 }
 
 // Tạo link Google Maps dẫn đường từ vị trí khách hàng tới tập điểm
