@@ -312,6 +312,23 @@ async function geocodeAddress(rawQuery, limit = 5) {
   return [];
 }
 
+async function geocodeAddressQuick(rawQuery, limit = 5) {
+  const query = ensureVietnamSuffix(rawQuery);
+  if (!query) return [];
+
+  const response = await fetch(buildNominatimUrl(query, {
+    limit,
+    bounded: true
+  }));
+
+  if (!response.ok) {
+    throw new Error(`Nominatim HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  return Array.isArray(data) ? data : [];
+}
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, ch => ({
     "&": "&amp;",
@@ -1243,7 +1260,7 @@ input.addEventListener("input", () => {
   clearTimeout(suggestTimer);
   suggestTimer = setTimeout(async () => {
     try {
-      const data = await geocodeAddress(q, 5);
+      const data = await geocodeAddressQuick(q, 5);
       suggestBox.innerHTML = "";
       if (!data.length) {
         suggestBox.style.display = "none";
