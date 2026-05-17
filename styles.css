@@ -1,696 +1,719 @@
-/* ============================================================
-   DESIGN TOKENS
-   ============================================================ */
-:root {
-  /* Brand */
-  --primary:        #1a6fea;
-  --primary-hover:  #1558c2;
-  --primary-surface:#eff6ff;
-  --danger:         #e53935;
-  --danger-hover:   #c62828;
-
-  /* Surface */
-  --surface:        #ffffff;
-  --surface-2:      #f8fafc;
-  --surface-3:      #f1f5f9;
-  --surface-hover:  #e2e8f0;
-
-  /* Border */
-  --border:         #e2e8f0;
-  --border-focus:   #93c5fd;
-
-  /* Text */
-  --text-primary:   #1e293b;
-  --text-secondary: #475569;
-  --text-muted:     #94a3b8;
-
-  /* Shadow */
-  --shadow-sm:  0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
-  --shadow-md:  0 4px 12px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.04);
-  --shadow-lg:  0 8px 24px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.05);
-
-  /* Shape */
-  --radius-sm:  6px;
-  --radius:     10px;
-  --radius-lg:  14px;
-  --radius-xl:  18px;
-  --radius-full:9999px;
-
-  /* Motion */
-  --ease:       0.15s ease;
-
-  /* Layout */
-  --panel-w:    276px;
-  --panel-top:  56px;   /* clears the branding pill */
-  --header-h:   48px;
+/* =====================================================
+   RESET & BASE
+   ===================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
-
-/* ============================================================
-   BASE
-   ============================================================ */
-*, *::before, *::after { box-sizing: border-box; }
 
 html, body {
   height: 100%;
   margin: 0;
+  padding: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 14px;
-  color: var(--text-primary);
+  font-size: 13px;
+  color: #111827;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Map fills viewport behind everything */
+/* =====================================================
+   MAP
+   ===================================================== */
 #map {
-  position: fixed;
+  position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
   z-index: 0;
 }
 
-/* ============================================================
-   BRANDING PILL (top-left)
-   ============================================================ */
-.branding {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  z-index: 1001;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  padding: 6px 13px 6px 10px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--primary);
-  box-shadow: var(--shadow-sm);
-  pointer-events: none;
-  user-select: none;
-}
-
-.branding-icon {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   CONTROL PANEL
-   ============================================================ */
+/* =====================================================
+   SIDEBAR PANEL
+   ===================================================== */
 .control-box {
-  position: fixed;
-  top: var(--panel-top);
-  left: 10px;
+  position: absolute;
+  top: 12px;
+  left: 12px;
   z-index: 1000;
-  width: var(--panel-w);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  /* overflow visible so suggest-box can appear below the panel */
-  overflow: visible;
+  width: 292px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.06),
+    0 4px 24px rgba(0,0,0,0.12),
+    0 1px 4px rgba(0,0,0,0.06);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease;
 }
 
-/* ── Panel header ── */
+.control-box:hover {
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.07),
+    0 8px 32px rgba(0,0,0,0.16),
+    0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* Collapsed state — only header visible */
+.control-box.collapsed .panel-body {
+  display: none;
+}
+
+/* ── PANEL HEADER ── */
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  height: var(--header-h);
-  border-bottom: 1px solid var(--border);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  background: var(--surface);
-  cursor: pointer;
-  user-select: none;
-  transition: background var(--ease);
+  padding: 12px 14px 11px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.panel-header:hover { background: var(--surface-2); }
-
-/* Collapsed: hide border-radius bottom so pill is flush */
-.control-box.collapsed .panel-header {
-  border-bottom: none;
-  border-radius: var(--radius-lg);
-}
-
-.panel-header-left {
+.panel-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.panel-icon {
-  width: 15px;
-  height: 15px;
-  color: var(--primary);
+.panel-logo-bg {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.panel-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-  line-height: 1;
+.panel-logo-icon-el {
+  width: 17px !important;
+  height: 17px !important;
+  color: #2563eb;
 }
 
-/* Arrow toggle (textContent set by app.js: ▲ / ▼) */
-#arrow {
-  display: flex;
+.panel-title-main {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.panel-title-sub {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 400;
+  line-height: 1.3;
+  margin-top: 1px;
+}
+
+.collapse-toggle {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm);
+  border-radius: 7px;
   font-size: 10px;
-  color: var(--text-muted);
-  transition: background var(--ease), color var(--ease);
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  user-select: none;
   flex-shrink: 0;
+  line-height: 1;
 }
 
-.panel-header:hover #arrow {
-  background: var(--surface-3);
-  color: var(--text-secondary);
+.collapse-toggle:hover {
+  background: #f1f5f9;
+  color: #1e293b;
 }
 
-/* ── Panel body ── */
+/* ── PANEL BODY ── */
 .panel-body {
-  padding: 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-  background: var(--surface);
-  overflow: visible;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
 }
 
-/* Collapsed hides body */
-.control-box.collapsed .panel-body { display: none; }
+.panel-body::-webkit-scrollbar {
+  width: 4px;
+}
 
-/* ============================================================
-   SEARCH INPUTS
-   ============================================================ */
+.panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-body::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 2px;
+}
+
+/* ── DIVIDER ── */
+.divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 2px 0;
+}
+
+/* =====================================================
+   SEARCH ROW & INPUTS
+   ===================================================== */
 .search-row {
   display: flex;
-  align-items: center;
   gap: 6px;
-  /* position:relative set inline so suggest-box positions correctly */
+  align-items: center;
 }
 
-.input-wrapper {
-  position: relative;
+.input-icon-wrap {
   flex: 1;
+  position: relative;
   display: flex;
   align-items: center;
 }
 
-.input-icon {
+.field-icon {
   position: absolute;
   left: 9px;
-  width: 14px;
-  height: 14px;
-  color: var(--text-muted);
+  width: 13px !important;
+  height: 13px !important;
+  color: #94a3b8;
   pointer-events: none;
   flex-shrink: 0;
+  z-index: 1;
 }
 
-.search-input {
+.panel-input {
   width: 100%;
-  padding: 8px 10px 8px 30px;
-  font-family: inherit;
-  font-size: 13px;
-  color: var(--text-primary);
-  background: var(--surface-2);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  height: 34px;
+  padding: 0 10px 0 29px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 9px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #1e293b;
+  background: #f8fafc;
   outline: none;
-  line-height: 1.4;
-  transition: border-color var(--ease), background var(--ease), box-shadow var(--ease);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 
-.search-input::placeholder { color: var(--text-muted); }
-
-.search-input:focus {
-  background: var(--surface);
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(26,111,234,.12);
+.panel-input:focus {
+  border-color: #3b82f6;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
 }
 
-/* ============================================================
-   BUTTONS
-   ============================================================ */
-.btn {
-  display: inline-flex;
+.panel-input::placeholder {
+  color: #a8b5c8;
+  font-size: 11.5px;
+}
+
+.panel-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f1f5f9;
+}
+
+/* Search button (icon only) */
+.btn-search {
+  width: 34px;
+  height: 34px;
+  background: #2563eb;
+  border: none;
+  border-radius: 9px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 14px;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  color: #ffffff;
   cursor: pointer;
-  transition: background var(--ease), border-color var(--ease),
-              color var(--ease), box-shadow var(--ease), opacity var(--ease);
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.btn svg {
-  width: 14px;
-  height: 14px;
+  transition: background 0.15s, transform 0.1s;
   flex-shrink: 0;
 }
 
-.btn-full  { width: 100%; }
-
-.btn-icon {
-  padding: 0;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-}
-.btn-icon svg { width: 15px; height: 15px; }
-
-/* Primary */
-.btn-primary {
-  background: var(--primary);
-  color: #fff;
-}
-.btn-primary:hover { background: var(--primary-hover); }
-
-/* Secondary */
-.btn-secondary {
-  background: var(--surface-2);
-  color: var(--text-secondary);
-  border-color: var(--border);
-}
-.btn-secondary:hover:not(:disabled) {
-  background: var(--surface-hover);
-  color: var(--text-primary);
-}
-.btn-secondary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
+.btn-search:hover {
+  background: #1d4ed8;
 }
 
-/* Danger */
-.btn-danger {
-  background: var(--danger);
-  color: #fff;
+.btn-search:active {
+  transform: scale(0.93);
 }
-.btn-danger:hover { background: var(--danger-hover); }
 
-/* Action group */
-.action-buttons {
+/* =====================================================
+   ACTION BUTTONS
+   ===================================================== */
+.action-stack {
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
 
-/* ============================================================
-   FILTER SECTION
-   ============================================================ */
-.filter-box {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.filter-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 12px;
-  background: var(--surface-2);
-  cursor: pointer;
-  user-select: none;
-  transition: background var(--ease);
-}
-.filter-title:hover { background: var(--surface-hover); }
-
-/* Arrow text (textContent set by app.js) */
-.filter-arrow-chr {
-  font-size: 10px;
-  color: var(--text-muted);
+.btn-icon {
+  width: 14px !important;
+  height: 14px !important;
   flex-shrink: 0;
 }
 
-.filter-title > span:first-child {
-  font-size: 11px;
+.btn-danger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 35px;
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 9px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  letter-spacing: -0.01em;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-danger:active {
+  transform: scale(0.98);
+}
+
+.btn-ghost {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  background: #f8fafc;
+  color: #374151;
+  border: 1.5px solid #e9edf2;
+  border-radius: 9px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  text-align: left;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =====================================================
+   FILTER SECTION
+   ===================================================== */
+.filter-box {
+  /* gap from parent flex handles spacing */
+}
+
+.filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 9px;
+  background: #f8fafc;
+  border-radius: 9px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.filter-header:hover {
+  background: #f1f5f9;
+}
+
+.filter-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-header-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.filter-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--text-secondary);
+  border-radius: 20px;
+}
+
+.filter-chevron {
+  font-size: 9px;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  user-select: none;
 }
 
 .filter-content {
-  display: none; /* toggled by app.js */
-  padding: 10px 12px 12px;
-  background: var(--surface);
+  display: none; /* toggled by JS via inline style */
+  padding: 6px 2px 2px;
 }
 
-.filter-stats {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-bottom: 9px;
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--border);
-}
-.filter-stats strong {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.filter-options {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.filter-item {
+.filter-row {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 5px 7px;
+  border-radius: 7px;
   cursor: pointer;
-  padding: 3px 0;
+  transition: background 0.1s;
 }
 
-.filter-item input[type="checkbox"] {
+.filter-row:hover {
+  background: #f8fafc;
+}
+
+/* Native checkbox — accent color */
+.eff-filter {
   width: 14px;
   height: 14px;
+  accent-color: #2563eb;
   cursor: pointer;
-  accent-color: var(--primary);
   flex-shrink: 0;
   margin: 0;
 }
 
-.filter-dot {
+/* Shared color dot (used in filter rows AND legend) */
+.eff-dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
+  display: inline-block;
 }
 
-.filter-label {
+.eff-label {
   flex: 1;
   font-size: 12px;
-  color: var(--text-secondary);
+  color: #374151;
+  font-weight: 400;
 }
 
-.filter-count {
+.eff-count {
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
+  color: #9ca3af;
+  font-weight: 500;
+  background: #f1f5f9;
   padding: 1px 7px;
-  min-width: 28px;
+  border-radius: 20px;
+  min-width: 24px;
   text-align: center;
 }
 
-/* ============================================================
+/* =====================================================
    LEGEND (bottom-right)
-   ============================================================ */
+   ===================================================== */
 .hieusuat {
   position: fixed;
-  right: 10px;
+  right: 12px;
   bottom: 28px;
   z-index: 1000;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  padding: 10px 14px 11px;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 10px 13px;
+  border-radius: 13px;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.06),
+    0 4px 20px rgba(0,0,0,0.10);
+  min-width: 128px;
+}
+
+/* Override the .legend base class from older CSS */
+.legend {
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
 }
 
 .legend-title {
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  color: #64748b;
   text-transform: uppercase;
-  color: var(--text-muted);
+  letter-spacing: 0.06em;
   margin-bottom: 8px;
 }
 
-.legend-items {
+.legend-list {
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
 
-.legend-item {
+.legend-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-secondary);
+  gap: 7px;
+  font-size: 11.5px;
+  color: #374151;
 }
 
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   LOCATE BUTTON (top-right FAB)
-   ============================================================ */
-.locate-btn {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 1001;
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  color: var(--primary);
-  padding: 0;
-  transition: background var(--ease), box-shadow var(--ease), color var(--ease);
-}
-.locate-btn:hover {
-  background: var(--primary-surface);
-  box-shadow: var(--shadow-md);
-}
-.locate-btn svg { width: 18px; height: 18px; }
-
-/* ============================================================
-   AUTOCOMPLETE SUGGEST BOX
-   ============================================================ */
+/* =====================================================
+   AUTOCOMPLETE / SUGGEST BOX
+   ===================================================== */
 .suggest-box {
   position: absolute;
-  top: calc(100% + 4px);
+  top: 38px;
   left: 0;
   right: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-md);
-  max-height: 200px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  max-height: 190px;
   overflow-y: auto;
   z-index: 2000;
   display: none;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.13), 0 2px 6px rgba(0,0,0,0.07);
 }
 
 .suggest-item {
-  padding: 9px 12px;
-  cursor: pointer;
+  padding: 8px 12px;
   font-size: 12px;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border);
+  color: #374151;
+  cursor: pointer;
+  border-bottom: 1px solid #f8fafc;
+  transition: background 0.1s, color 0.1s;
   line-height: 1.4;
-  transition: background var(--ease), color var(--ease);
-}
-.suggest-item:last-child { border-bottom: none; }
-.suggest-item:hover {
-  background: var(--surface-2);
-  color: var(--text-primary);
 }
 
-/* ============================================================
-   LEAFLET POPUP STYLING
-   ============================================================ */
+.suggest-item:last-child {
+  border-bottom: none;
+}
+
+.suggest-item:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* =====================================================
+   LOCATE BUTTON (top-right)
+   ===================================================== */
+.locate-btn {
+  position: fixed;
+  right: 12px;
+  top: 12px;
+  z-index: 1001;
+  width: 40px;
+  height: 40px;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: none;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.06),
+    0 4px 14px rgba(0,0,0,0.10);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+.locate-btn:hover {
+  background: #eff6ff;
+  box-shadow:
+    0 0 0 1px rgba(59,130,246,0.25),
+    0 6px 20px rgba(0,0,0,0.14);
+}
+
+.locate-btn:active {
+  transform: scale(0.91);
+}
+
+/* =====================================================
+   BRANDING (bottom-left)
+   ===================================================== */
+.branding {
+  position: fixed;
+  bottom: 28px;
+  left: 12px;
+  z-index: 999;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #1d4ed8;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.08);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.branding-icon {
+  width: 11px !important;
+  height: 11px !important;
+  color: #2563eb;
+}
+
+/* =====================================================
+   BLINK ANIMATION (highlight tập điểm gợi ý)
+   ===================================================== */
+.blink {
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.28; }
+}
+
+/* =====================================================
+   LEAFLET POPUP OVERRIDES
+   ===================================================== */
+.leaflet-container {
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
 .leaflet-popup-content-wrapper {
-  border-radius: var(--radius) !important;
-  box-shadow: var(--shadow-lg) !important;
-  border: 1px solid var(--border);
+  border-radius: 12px !important;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.07), 0 10px 36px rgba(0,0,0,0.14) !important;
   padding: 0 !important;
   overflow: hidden;
 }
 
 .leaflet-popup-content {
-  font-family: 'Inter', -apple-system, sans-serif !important;
-  font-size: 13px !important;
-  line-height: 1.55 !important;
-  color: var(--text-secondary) !important;
-  margin: 14px 16px !important;
-  min-width: 210px;
+  margin: 12px 15px 13px !important;
+  font-size: 12.5px !important;
+  line-height: 1.65 !important;
+  color: #1e293b !important;
+  font-family: 'Inter', sans-serif !important;
 }
 
 .leaflet-popup-content b {
-  color: var(--text-primary);
   font-weight: 600;
+  color: #0f172a;
 }
 
 .leaflet-popup-content hr {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 10px 0;
+  border: none !important;
+  border-top: 1px solid #f1f5f9 !important;
+  margin: 8px 0 !important;
 }
 
 .leaflet-popup-content a {
-  color: var(--primary);
+  color: #2563eb;
   text-decoration: none;
+  font-weight: 500;
 }
-.leaflet-popup-content a:hover { text-decoration: underline; }
 
-.leaflet-popup-tip-container { margin-top: -1px; }
+.leaflet-popup-content a:hover {
+  text-decoration: underline;
+}
 
-/* Customer table inside popup */
+.leaflet-popup-close-button {
+  color: #94a3b8 !important;
+  font-size: 16px !important;
+  padding: 6px 8px !important;
+}
+
+/* Customer table in popup */
 .leaflet-popup-content table {
-  width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
-  margin-top: 6px;
+  width: 100%;
+  font-size: 11.5px;
 }
-.leaflet-popup-content th {
-  background: var(--surface-2) !important;
-  padding: 5px 8px;
+
+.leaflet-popup-content table th {
+  background: #f8fafc;
   font-weight: 600;
-  color: var(--text-secondary);
-  text-align: left;
-  border: 1px solid var(--border) !important;
-}
-.leaflet-popup-content td {
+  color: #64748b;
   padding: 5px 8px;
-  border: 1px solid var(--border) !important;
-  color: var(--text-secondary);
+  border: 1px solid #e9edf2;
+  text-align: left;
 }
 
-/* ============================================================
-   BLINK ANIMATION (used by app.js on highlighted circles)
-   ============================================================ */
-.blink { animation: blink 1s ease-in-out infinite; }
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.25; }
+.leaflet-popup-content table td {
+  padding: 4px 8px;
+  border: 1px solid #f1f5f9;
+  color: #374151;
+  vertical-align: top;
 }
 
-/* ============================================================
-   RESPONSIVE — MOBILE (≤ 640 px)
-   Bottom-sheet layout
-   ============================================================ */
-@media (max-width: 640px) {
+.leaflet-popup-content table tr:nth-child(even) td {
+  background: #fafbfc;
+}
 
-  /* ── Panel becomes bottom sheet ──
-     overflow: visible is critical — lets the suggest-box float
-     upward onto the map without being clipped by the panel. */
+/* =====================================================
+   RESPONSIVE — MOBILE
+   ===================================================== */
+@media (max-width: 520px) {
   .control-box {
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    box-shadow: 0 -4px 24px rgba(0,0,0,.12);
-    border-bottom: none;
-    overflow: visible;
+    width: calc(100vw - 24px);
+    top: 10px;
+    left: 12px;
+    right: 12px;
+    border-radius: 14px;
   }
 
-  .panel-header {
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-    padding-top: 18px; /* space for drag handle */
-    position: relative;
-  }
-
-  /* Drag handle indicator */
-  .panel-header::before {
-    content: '';
-    position: absolute;
-    top: 7px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 34px;
-    height: 4px;
-    background: var(--border);
-    border-radius: var(--radius-full);
-  }
-
-  .control-box.collapsed .panel-header {
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  }
-
-  /* Panel body: natural height (content ~260px fits well under 75vh).
-     No overflow-y scroll needed; keeping overflow:visible so the
-     suggest-box absolute child can escape upward. */
   .panel-body {
-    overflow: visible;
-    padding-bottom: 24px;
+    max-height: calc(68vh - 60px);
   }
 
-  /* Suggest-box floats UPWARD — appears on the map above the panel.
-     No clipping issue since control-box has overflow: visible. */
-  .suggest-box {
-    top: auto;
-    bottom: calc(100% + 4px);
-    max-height: 180px;
-  }
-
-  /* ── Branding: top-left, smaller ── */
-  .branding {
-    top: 10px;
-    left: 10px;
-    font-size: 10px;
-    padding: 5px 11px 5px 9px;
-  }
-
-  /* ── Locate button: stays top-right ── */
-  .locate-btn {
-    top: 10px;
-    right: 10px;
-  }
-
-  /* ── Legend: below locate button, top-right ── */
   .hieusuat {
-    top: 60px;
-    right: 10px;
-    bottom: auto;
-    padding: 8px 11px 9px;
+    right: 8px;
+    bottom: 22px;
+    padding: 8px 11px;
+    border-radius: 11px;
   }
-  .legend-title { font-size: 9px;  margin-bottom: 6px; }
-  .legend-item  { font-size: 11px; gap: 6px; }
-  .legend-dot   { width: 8px; height: 8px; }
 
-  /* Bigger touch targets */
-  .btn-full { min-height: 42px; }
+  .branding {
+    left: 8px;
+    bottom: 22px;
+  }
 
-  /* Prevent iOS auto-zoom on input focus (font-size must be ≥ 16px) */
-  .search-input { font-size: 16px; padding: 10px 10px 10px 32px; }
-
-  /* Larger filter checkboxes for touch */
-  .filter-item { padding: 5px 0; }
-  .filter-item input[type="checkbox"] { width: 16px; height: 16px; }
+  .locate-btn {
+    right: 8px;
+    top: 8px;
+    width: 38px;
+    height: 38px;
+  }
 }
 
-/* ============================================================
-   RESPONSIVE — SMALL DESKTOP / TABLET (641–900 px)
-   ============================================================ */
-@media (min-width: 641px) and (max-width: 900px) {
-  :root { --panel-w: 256px; }
+@media (max-width: 360px) {
+  .panel-title-main {
+    font-size: 13px;
+  }
+
+  .panel-title-sub {
+    display: none;
+  }
 }
