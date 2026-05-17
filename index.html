@@ -2,188 +2,183 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <title>MobiFiber Map – MobiFone Đắk Lắk</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MobiFiber — Bản đồ vùng phủ Đắk Lắk</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
+  <!-- Tailwind CSS — preflight disabled to avoid Leaflet conflicts -->
+  <script>
+    window.tailwind = window.tailwind || {};
+    tailwind.config = { corePlugins: { preflight: false } };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Inter font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
   <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
 
-<!-- ── BRANDING ── -->
+<!-- ── MAP ─────────────────────────────────────────── -->
+<div id="map"></div>
+
+<!-- ── BRANDING (bottom-left watermark) ────────────── -->
 <div class="branding">
-  <svg class="branding-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
-    <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
-    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
-    <circle cx="12" cy="20" r="1.5" fill="currentColor" stroke="none"/>
-  </svg>
+  <i data-lucide="wifi" class="branding-icon"></i>
   PHÒNG VIỄN THÔNG
 </div>
 
-<!-- ── CONTROL PANEL ── -->
+<!-- ── SIDEBAR PANEL ────────────────────────────────── -->
 <div class="control-box" id="controlBox">
 
-  <!-- Header – entire row is clickable to toggle -->
-  <div class="panel-header" onclick="toggleControl()">
-    <div class="panel-header-left">
-      <svg class="panel-icon" viewBox="0 0 20 20" fill="currentColor">
-        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
-      </svg>
-      <span class="panel-title">Tìm tập điểm</span>
+  <!-- Header — always visible -->
+  <div class="panel-header">
+    <div class="panel-brand">
+      <div class="panel-logo-bg">
+        <i data-lucide="wifi" class="panel-logo-icon-el"></i>
+      </div>
+      <div>
+        <div class="panel-title-main">MobiFiber</div>
+        <div class="panel-title-sub">Vùng phủ Đắk Lắk</div>
+      </div>
     </div>
-    <span id="arrow" class="panel-toggle">▲</span>
+    <span id="arrow" class="collapse-toggle" onclick="toggleControl()" title="Thu gọn">▲</span>
   </div>
 
-  <!-- Body – hidden when collapsed -->
+  <!-- Body — hidden when .collapsed -->
   <div class="panel-body">
 
-    <!-- Location search -->
+    <!-- Search: địa điểm / tọa độ -->
     <div class="search-row" style="position:relative">
-      <div class="input-wrapper">
-        <svg class="input-icon" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/>
-        </svg>
-        <input id="searchInput" class="search-input" placeholder="Click đúp map · tọa độ · địa chỉ">
+      <div class="input-icon-wrap">
+        <i data-lucide="map-pin" class="field-icon"></i>
+        <input id="searchInput" class="panel-input" placeholder="Click đúp map / nhập tọa độ, địa chỉ">
       </div>
-      <button class="btn btn-primary btn-icon" onclick="searchLocation()" title="Tìm kiếm">
-        <svg viewBox="0 0 20 20" fill="currentColor">
-          <path d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"/>
-        </svg>
+      <button onclick="searchLocation()" class="btn-search" title="Tìm kiếm">
+        <i data-lucide="search" style="width:14px;height:14px"></i>
       </button>
       <div id="suggestBox" class="suggest-box"></div>
     </div>
 
-    <!-- Customer search -->
+    <!-- Search: khách hàng đã bán -->
     <div class="search-row" style="position:relative">
-      <div class="input-wrapper">
-        <svg class="input-icon" viewBox="0 0 20 20" fill="currentColor">
-          <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/>
-        </svg>
-        <input id="customerSearchInput" class="search-input" placeholder="Tìm khách hàng đã bán…">
+      <div class="input-icon-wrap" style="flex:1">
+        <i data-lucide="user" class="field-icon"></i>
+        <input id="customerSearchInput" class="panel-input" placeholder="Tìm khách hàng đã bán">
       </div>
       <div id="customerSuggestBox" class="suggest-box"></div>
     </div>
 
+    <div class="divider"></div>
+
     <!-- Action buttons -->
-    <div class="action-buttons">
-      <button id="feedbackBtn" class="btn btn-danger btn-full">
-        <svg viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clip-rule="evenodd"/>
-        </svg>
-        Nhập phản ánh sự cố MobiFiber
+    <div class="action-stack">
+      <button id="feedbackBtn" class="btn-danger">
+        <i data-lucide="alert-circle" class="btn-icon"></i>
+        Nhập phản ánh sự cố
       </button>
-
-      <button id="exportUpgradeBtn" class="btn btn-secondary btn-full" onclick="exportUpgradeList()" disabled>
-        <svg viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-        </svg>
-        DS tập điểm cần nâng cấp
+      <button id="exportUpgradeBtn" onclick="exportUpgradeList()" class="btn-ghost" disabled>
+        <i data-lucide="trending-up" class="btn-icon"></i>
+        Tập điểm cần nâng cấp
       </button>
-
-      <button id="exportKmlBtn" class="btn btn-secondary btn-full" onclick="exportAllCirclesToKML()" disabled>
-        <svg viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
-        </svg>
-        Xuất toàn bộ tập điểm (*.KML)
+      <button id="exportKmlBtn" onclick="exportAllCirclesToKML()" class="btn-ghost" disabled>
+        <i data-lucide="download" class="btn-icon"></i>
+        Xuất KML toàn bộ tập điểm
       </button>
-
-      <button id="exportUnmatchedCustomersBtn" class="btn btn-secondary btn-full" onclick="exportUnmatchedCustomers()" disabled>
-        <svg viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
-        </svg>
-        DS KH chưa xác định tập điểm
+      <button id="exportUnmatchedCustomersBtn" onclick="exportUnmatchedCustomers()" class="btn-ghost" disabled>
+        <i data-lucide="user-x" class="btn-icon"></i>
+        KH chưa xác định tập điểm
       </button>
     </div>
 
-    <!-- Filter section -->
+    <div class="divider"></div>
+
+    <!-- Filter hiệu suất -->
     <div class="filter-box">
-      <div class="filter-title" onclick="toggleFilter()">
-        <span>Lọc theo hiệu suất</span>
-        <span id="filterArrow" class="filter-arrow-chr">▼</span>
+      <div class="filter-header" onclick="toggleFilter()">
+        <div class="filter-header-left">
+          <i data-lucide="sliders-horizontal" style="width:13px;height:13px;color:#94a3b8;flex-shrink:0"></i>
+          <span class="filter-header-label">Lọc theo hiệu suất</span>
+        </div>
+        <div class="filter-header-right">
+          <span class="count-badge" id="cnt-total">0</span>
+          <span id="filterArrow" class="filter-chevron">▼</span>
+        </div>
       </div>
 
       <div id="filterContent" class="filter-content">
-        <div class="filter-stats">
-          Tổng tập điểm: <strong id="cnt-total">0</strong>
-        </div>
-
-        <div class="filter-options">
-          <label class="filter-item">
-            <input type="checkbox" class="eff-filter" value="lt20" checked>
-            <span class="filter-dot" style="background:#3b82f6"></span>
-            <span class="filter-label">&lt; 20%</span>
-            <span class="filter-count" id="cnt-lt20">0</span>
-          </label>
-
-          <label class="filter-item">
-            <input type="checkbox" class="eff-filter" value="20_50" checked>
-            <span class="filter-dot" style="background:#22c55e"></span>
-            <span class="filter-label">20 – 50%</span>
-            <span class="filter-count" id="cnt-20_50">0</span>
-          </label>
-
-          <label class="filter-item">
-            <input type="checkbox" class="eff-filter" value="50_80" checked>
-            <span class="filter-dot" style="background:#f97316"></span>
-            <span class="filter-label">50 – 80%</span>
-            <span class="filter-count" id="cnt-50_80">0</span>
-          </label>
-
-          <label class="filter-item">
-            <input type="checkbox" class="eff-filter" value="80_100" checked>
-            <span class="filter-dot" style="background:#ef4444"></span>
-            <span class="filter-label">80 – &lt;100%</span>
-            <span class="filter-count" id="cnt-80_100">0</span>
-          </label>
-
-          <label class="filter-item">
-            <input type="checkbox" class="eff-filter" value="gte100" checked>
-            <span class="filter-dot" style="background:#1f2937"></span>
-            <span class="filter-label">≥ 100%</span>
-            <span class="filter-count" id="cnt-gte100">0</span>
-          </label>
-        </div>
+        <label class="filter-row">
+          <input type="checkbox" class="eff-filter" value="lt20" checked>
+          <span class="eff-dot" style="background:#3b82f6"></span>
+          <span class="eff-label">&lt; 20%</span>
+          <span class="eff-count" id="cnt-lt20">0</span>
+        </label>
+        <label class="filter-row">
+          <input type="checkbox" class="eff-filter" value="20_50" checked>
+          <span class="eff-dot" style="background:#22c55e"></span>
+          <span class="eff-label">20 – 50%</span>
+          <span class="eff-count" id="cnt-20_50">0</span>
+        </label>
+        <label class="filter-row">
+          <input type="checkbox" class="eff-filter" value="50_80" checked>
+          <span class="eff-dot" style="background:#f97316"></span>
+          <span class="eff-label">50 – 80%</span>
+          <span class="eff-count" id="cnt-50_80">0</span>
+        </label>
+        <label class="filter-row">
+          <input type="checkbox" class="eff-filter" value="80_100" checked>
+          <span class="eff-dot" style="background:#ef4444"></span>
+          <span class="eff-label">80 – &lt;100%</span>
+          <span class="eff-count" id="cnt-80_100">0</span>
+        </label>
+        <label class="filter-row">
+          <input type="checkbox" class="eff-filter" value="gte100" checked>
+          <span class="eff-dot" style="background:#111827"></span>
+          <span class="eff-label">≥ 100%</span>
+          <span class="eff-count" id="cnt-gte100">0</span>
+        </label>
       </div>
     </div>
 
-  </div><!-- /panel-body -->
-</div>
+  </div><!-- /.panel-body -->
+</div><!-- /.control-box -->
 
-<!-- ── LEGEND ── -->
+<!-- ── LEGEND (bottom-right) ────────────────────────── -->
 <div class="legend hieusuat">
-  <div class="legend-title">Hiệu suất tập điểm</div>
-  <div class="legend-items">
-    <div class="legend-item"><span class="legend-dot" style="background:#3b82f6"></span>&lt; 20%</div>
-    <div class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>20 – 50%</div>
-    <div class="legend-item"><span class="legend-dot" style="background:#f97316"></span>50 – 80%</div>
-    <div class="legend-item"><span class="legend-dot" style="background:#ef4444"></span>80 – &lt;100%</div>
-    <div class="legend-item"><span class="legend-dot" style="background:#1f2937"></span>≥ 100%</div>
+  <div class="legend-title">Hiệu suất sử dụng</div>
+  <div class="legend-list">
+    <div class="legend-row"><span class="eff-dot" style="background:#3b82f6"></span><span>&lt;20%</span></div>
+    <div class="legend-row"><span class="eff-dot" style="background:#22c55e"></span><span>20–50%</span></div>
+    <div class="legend-row"><span class="eff-dot" style="background:#f97316"></span><span>50–80%</span></div>
+    <div class="legend-row"><span class="eff-dot" style="background:#ef4444"></span><span>80–&lt;100%</span></div>
+    <div class="legend-row"><span class="eff-dot" style="background:#111827"></span><span>≥100%</span></div>
   </div>
 </div>
 
-<!-- ── MAP ── -->
-<div id="map"></div>
-
-<!-- ── LOCATE BUTTON ── -->
+<!-- ── LOCATE BUTTON (top-right) ────────────────────── -->
 <button class="locate-btn" onclick="locateMe()" title="Định vị tôi">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="3"/>
-    <path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>
-  </svg>
+  <i data-lucide="navigation-2" style="width:18px;height:18px;color:#2563eb"></i>
 </button>
 
+<!-- ── SCRIPTS ───────────────────────────────────────── -->
 <script src="config.js"></script>
 <script src="app.js"></script>
+<script>lucide.createIcons();</script>
 
+<!-- Tracking -->
 <script>
 const trackingUrl =
   (window.APP_CONFIG && window.APP_CONFIG.TRACKING_SCRIPT_URL) ||
