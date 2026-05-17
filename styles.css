@@ -1,183 +1,696 @@
-    /* =========================
-       STYLE CƠ BẢN CHO MAP
-       ========================= */
-    html, body { height: 100%; margin: 0; }
-    #map { width: 100%; height: 100%; }
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  /* Brand */
+  --primary:        #1a6fea;
+  --primary-hover:  #1558c2;
+  --primary-surface:#eff6ff;
+  --danger:         #e53935;
+  --danger-hover:   #c62828;
 
-    /* =========================
-       KHUNG ĐIỀU KHIỂN (SEARCH + FILTER)
-       ========================= */
-    .control-box {
-      position: absolute;
-      top: 40px;  
-      left: 5px;
-      z-index: 1000;
-      background: white;
-      padding: 10px 12px;
-      border-radius: 6px;
-      box-shadow: 0 0 6px rgba(0,0,0,0.3);
-      font-size: 13px;
-      min-width: 240px;
-    }
+  /* Surface */
+  --surface:        #ffffff;
+  --surface-2:      #f8fafc;
+  --surface-3:      #f1f5f9;
+  --surface-hover:  #e2e8f0;
 
-    .panel-title {
-      font-weight: bold;
-      margin-bottom: 6px;
-    }
+  /* Border */
+  --border:         #e2e8f0;
+  --border-focus:   #93c5fd;
 
-    /* Hàng nhập tìm kiếm */
-    .search-row {
-      display: flex;
-      gap: 4px;
-      margin-bottom: 6px;
-    }
+  /* Text */
+  --text-primary:   #1e293b;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
 
-    .search-row input { flex: 1; }
+  /* Shadow */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:  0 4px 12px rgba(0,0,0,.10), 0 2px 4px rgba(0,0,0,.04);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.05);
 
-    /* =========================
-       LEGEND HIỆU SUẤT
-       ========================= */
-    .legend {
-      margin-top: 6px;
-      border-top: 1px solid #eee;
-      padding-top: 6px;
-    }
+  /* Shape */
+  --radius-sm:  6px;
+  --radius:     10px;
+  --radius-lg:  14px;
+  --radius-xl:  18px;
+  --radius-full:9999px;
 
-    .legend div { margin-bottom: 4px; }
+  /* Motion */
+  --ease:       0.15s ease;
 
-    /* =========================
-       HIỆU ỨNG NHẤP NHÁY
-       Dùng highlight tập điểm gợi ý
-       ========================= */
-    .blink {
-      animation: blink 1s infinite;
-    }
+  /* Layout */
+  --panel-w:    276px;
+  --panel-top:  56px;   /* clears the branding pill */
+  --header-h:   48px;
+}
 
-    @keyframes blink {
-      0% { opacity: 1; }
-      50% { opacity: 0.3; }
-      100% { opacity: 1; }
-    }
+/* ============================================================
+   BASE
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
 
-    /* =========================
-       KHUNG CHÚ GIẢI HIỆU SUẤT (GÓC PHẢI)
-       ========================= */
-    .hieusuat {
-      position: fixed;
-      right: 10px;
-      bottom: 10px;
-      z-index: 1000;
-      background: white;
-      padding: 8px 10px;
-      border-radius: 6px;
-      box-shadow: 0 0 6px rgba(0,0,0,0.3);
-      font-size: 13px;
-    }
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-    .col {
-      display: inline-block;
-      width: 90px;
-    }
+/* Map fills viewport behind everything */
+#map {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
 
-    /* =========================
-       GỢI Ý ĐỊA CHỈ (AUTOCOMPLETE)
-       ========================= */
-    .suggest-box {
-      position: absolute;
-      top: 34px;
-      left: 0;
-      right: 0;
-      background: white;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      max-height: 180px;
-      overflow-y: auto;
-      z-index: 2000;
-      display: none;
-      font-size: 12px;
-    }
-    
-    .suggest-item {
-      padding: 6px 8px;
-      cursor: pointer;
-    }
-    
-    .suggest-item:hover {
-      background: #f0f0f0;
-    }
+/* ============================================================
+   BRANDING PILL (top-left)
+   ============================================================ */
+.branding {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1001;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 6px 13px 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  user-select: none;
+}
 
-    /* =========================
-       NÚT ĐỊNH VỊ NGƯỜI DÙNG
-       ========================= */
-    .locate-btn {
-      position: fixed;
-      right: 10px;
-      top: 10px;         
-      z-index: 1001;
-      background: white;
-      border: none;
-      border-radius: 50%;
-      width: 42px;
-      height: 42px;
-      font-size: 20px;
-      cursor: pointer;
-      box-shadow: 0 0 6px rgba(0,0,0,0.3);
-    }
-    
-    .locate-btn:hover {
-      background: #f0f0f0;
-    }
+.branding-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
 
-    /* =========================
-       THU GỌN / MỞ RỘNG CONTROL BOX
-       ========================= */
-    .control-box.collapsed {
-      height: 42px;
-      overflow: hidden;
-      padding-bottom: 4px;
-    }
-    
-    .control-box.collapsed .search-row,
-    .control-box.collapsed select,
-    .control-box.collapsed button,
-    .control-box.collapsed .legend,
-    .control-box.collapsed > div:not(.panel-title) {
-      display: none;
-    }
+/* ============================================================
+   CONTROL PANEL
+   ============================================================ */
+.control-box {
+  position: fixed;
+  top: var(--panel-top);
+  left: 10px;
+  z-index: 1000;
+  width: var(--panel-w);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  /* overflow visible so suggest-box can appear below the panel */
+  overflow: visible;
+}
 
-      /* =========================
-       FILTER HIỆU SUẤT THU GỌN
-       ========================= */
-    .filter-box {
-      margin-top: 6px;
-    }
-    
-    .filter-title {
-      cursor: pointer;
-      user-select: none;
-    }
-    
-    .filter-content {
-      margin-top: 6px;
-      display: none; /* MẶC ĐỊNH ẨN */
-    }
+/* ── Panel header ── */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: var(--header-h);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--surface);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--ease);
+}
 
-    /* =========================
-       LOGO TRÊN CONTROL BOX
-       ========================= */
-    .branding {
-      position: absolute;
-      top: 5px;
-      left: 5px;
-      z-index: 1001;
-    
-      background: rgba(255, 255, 255, 0.9);
-      padding: 6px 10px;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: bold;
-      color: #0056a3;
-      box-shadow: 0 0 6px rgba(0,0,0,0.25);
-    
-      pointer-events: none;
-    }
+.panel-header:hover { background: var(--surface-2); }
+
+/* Collapsed: hide border-radius bottom so pill is flush */
+.control-box.collapsed .panel-header {
+  border-bottom: none;
+  border-radius: var(--radius-lg);
+}
+
+.panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+/* Arrow toggle (textContent set by app.js: ▲ / ▼) */
+#arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: background var(--ease), color var(--ease);
+  flex-shrink: 0;
+}
+
+.panel-header:hover #arrow {
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+
+/* ── Panel body ── */
+.panel-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: var(--surface);
+  overflow: visible;
+}
+
+/* Collapsed hides body */
+.control-box.collapsed .panel-body { display: none; }
+
+/* ============================================================
+   SEARCH INPUTS
+   ============================================================ */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* position:relative set inline so suggest-box positions correctly */
+}
+
+.input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 9px;
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 10px 8px 30px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  outline: none;
+  line-height: 1.4;
+  transition: border-color var(--ease), background var(--ease), box-shadow var(--ease);
+}
+
+.search-input::placeholder { color: var(--text-muted); }
+
+.search-input:focus {
+  background: var(--surface);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(26,111,234,.12);
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--ease), border-color var(--ease),
+              color var(--ease), box-shadow var(--ease), opacity var(--ease);
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.btn svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.btn-full  { width: 100%; }
+
+.btn-icon {
+  padding: 0;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+.btn-icon svg { width: 15px; height: 15px; }
+
+/* Primary */
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--primary-hover); }
+
+/* Secondary */
+.btn-secondary {
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.btn-secondary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Danger */
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover { background: var(--danger-hover); }
+
+/* Action group */
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* ============================================================
+   FILTER SECTION
+   ============================================================ */
+.filter-box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.filter-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  background: var(--surface-2);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--ease);
+}
+.filter-title:hover { background: var(--surface-hover); }
+
+/* Arrow text (textContent set by app.js) */
+.filter-arrow-chr {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.filter-title > span:first-child {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.filter-content {
+  display: none; /* toggled by app.js */
+  padding: 10px 12px 12px;
+  background: var(--surface);
+}
+
+.filter-stats {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 9px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border);
+}
+.filter-stats strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.filter-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 3px 0;
+}
+
+.filter-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.filter-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.filter-label {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.filter-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 1px 7px;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* ============================================================
+   LEGEND (bottom-right)
+   ============================================================ */
+.hieusuat {
+  position: fixed;
+  right: 10px;
+  bottom: 28px;
+  z-index: 1000;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 10px 14px 11px;
+}
+
+.legend-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   LOCATE BUTTON (top-right FAB)
+   ============================================================ */
+.locate-btn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1001;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  color: var(--primary);
+  padding: 0;
+  transition: background var(--ease), box-shadow var(--ease), color var(--ease);
+}
+.locate-btn:hover {
+  background: var(--primary-surface);
+  box-shadow: var(--shadow-md);
+}
+.locate-btn svg { width: 18px; height: 18px; }
+
+/* ============================================================
+   AUTOCOMPLETE SUGGEST BOX
+   ============================================================ */
+.suggest-box {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 2000;
+  display: none;
+}
+
+.suggest-item {
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  line-height: 1.4;
+  transition: background var(--ease), color var(--ease);
+}
+.suggest-item:last-child { border-bottom: none; }
+.suggest-item:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   LEAFLET POPUP STYLING
+   ============================================================ */
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-lg) !important;
+  border: 1px solid var(--border);
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.leaflet-popup-content {
+  font-family: 'Inter', -apple-system, sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.55 !important;
+  color: var(--text-secondary) !important;
+  margin: 14px 16px !important;
+  min-width: 210px;
+}
+
+.leaflet-popup-content b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.leaflet-popup-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 10px 0;
+}
+
+.leaflet-popup-content a {
+  color: var(--primary);
+  text-decoration: none;
+}
+.leaflet-popup-content a:hover { text-decoration: underline; }
+
+.leaflet-popup-tip-container { margin-top: -1px; }
+
+/* Customer table inside popup */
+.leaflet-popup-content table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.leaflet-popup-content th {
+  background: var(--surface-2) !important;
+  padding: 5px 8px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: left;
+  border: 1px solid var(--border) !important;
+}
+.leaflet-popup-content td {
+  padding: 5px 8px;
+  border: 1px solid var(--border) !important;
+  color: var(--text-secondary);
+}
+
+/* ============================================================
+   BLINK ANIMATION (used by app.js on highlighted circles)
+   ============================================================ */
+.blink { animation: blink 1s ease-in-out infinite; }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.25; }
+}
+
+/* ============================================================
+   RESPONSIVE — MOBILE (≤ 640 px)
+   Bottom-sheet layout
+   ============================================================ */
+@media (max-width: 640px) {
+
+  /* ── Panel becomes bottom sheet ──
+     overflow: visible is critical — lets the suggest-box float
+     upward onto the map without being clipped by the panel. */
+  .control-box {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: 0 -4px 24px rgba(0,0,0,.12);
+    border-bottom: none;
+    overflow: visible;
+  }
+
+  .panel-header {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    padding-top: 18px; /* space for drag handle */
+    position: relative;
+  }
+
+  /* Drag handle indicator */
+  .panel-header::before {
+    content: '';
+    position: absolute;
+    top: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 34px;
+    height: 4px;
+    background: var(--border);
+    border-radius: var(--radius-full);
+  }
+
+  .control-box.collapsed .panel-header {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+
+  /* Panel body: natural height (content ~260px fits well under 75vh).
+     No overflow-y scroll needed; keeping overflow:visible so the
+     suggest-box absolute child can escape upward. */
+  .panel-body {
+    overflow: visible;
+    padding-bottom: 24px;
+  }
+
+  /* Suggest-box floats UPWARD — appears on the map above the panel.
+     No clipping issue since control-box has overflow: visible. */
+  .suggest-box {
+    top: auto;
+    bottom: calc(100% + 4px);
+    max-height: 180px;
+  }
+
+  /* ── Branding: top-left, smaller ── */
+  .branding {
+    top: 10px;
+    left: 10px;
+    font-size: 10px;
+    padding: 5px 11px 5px 9px;
+  }
+
+  /* ── Locate button: stays top-right ── */
+  .locate-btn {
+    top: 10px;
+    right: 10px;
+  }
+
+  /* ── Legend: below locate button, top-right ── */
+  .hieusuat {
+    top: 60px;
+    right: 10px;
+    bottom: auto;
+    padding: 8px 11px 9px;
+  }
+  .legend-title { font-size: 9px;  margin-bottom: 6px; }
+  .legend-item  { font-size: 11px; gap: 6px; }
+  .legend-dot   { width: 8px; height: 8px; }
+
+  /* Bigger touch targets */
+  .btn-full { min-height: 42px; }
+
+  /* Prevent iOS auto-zoom on input focus (font-size must be ≥ 16px) */
+  .search-input { font-size: 16px; padding: 10px 10px 10px 32px; }
+
+  /* Larger filter checkboxes for touch */
+  .filter-item { padding: 5px 0; }
+  .filter-item input[type="checkbox"] { width: 16px; height: 16px; }
+}
+
+/* ============================================================
+   RESPONSIVE — SMALL DESKTOP / TABLET (641–900 px)
+   ============================================================ */
+@media (min-width: 641px) and (max-width: 900px) {
+  :root { --panel-w: 256px; }
+}
